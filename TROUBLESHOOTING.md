@@ -2,6 +2,15 @@
 
 This guide helps you solve common issues when setting up and running the Corporate Living App.
 
+## 🎯 Most Common Issues
+
+| # | Error | Quick Fix | Full Guide |
+|---|-------|-----------|------------|
+| 1 | "Your project's URL and Key are required" | `cp .env.example .env.local` + edit with credentials | [SUPABASE_ERROR_FIX.md](./SUPABASE_ERROR_FIX.md) |
+| 2 | "Could not read package.json" | `cd corporate-living-app` | [ERROR_SOLUTION.md](./ERROR_SOLUTION.md) |
+| 3 | "Module not found" | `npm install` | See below |
+| 4 | "Port 3000 already in use" | `lsof -ti:3000 \| xargs kill` | See below |
+
 ## 📍 Quick Diagnosis
 
 **Before troubleshooting, make sure you're in the right directory!**
@@ -22,7 +31,38 @@ cd corporate-living-app
 
 ---
 
-## 🚨 Common Error #1: "Could not read package.json"
+## 🚨 Common Error #1: "Your project's URL and Key are required"
+
+### Error Message
+```
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+Check your Supabase project's API settings to find these values
+https://supabase.com/dashboard/project/_/settings/api
+```
+
+### Why This Happens
+Your Supabase credentials are not configured. You need a `.env.local` file with your credentials.
+
+### ✅ Solution
+
+**Quick Fix:**
+```bash
+# Option 1: Interactive setup (recommended)
+./scripts/setup-env.sh
+
+# Option 2: Manual setup
+cp .env.example .env.local
+# Then edit .env.local with your actual Supabase credentials
+
+# Option 3: Verify your configuration
+./scripts/check-env.sh
+```
+
+**📖 Detailed Instructions:** See [SUPABASE_ERROR_FIX.md](./SUPABASE_ERROR_FIX.md)
+
+---
+
+## 🚨 Common Error #2: "Could not read package.json"
 
 ### Error Message
 ```
@@ -66,53 +106,14 @@ npm install
 npm run dev
 ```
 
+**📖 Full Solution:** See [ERROR_SOLUTION.md](./ERROR_SOLUTION.md)
+
 ### 💡 Pro Tip
 Always make sure you see `package.json` when you run `ls`:
 ```bash
 ls package.json
 # Should show: package.json (not an error)
 ```
-
----
-
-## 🚨 Common Error #2: "Supabase is not configured"
-
-### Error Message
-You see this on the login page or in the browser console:
-```
-Error: Supabase is not configured
-```
-
-### Why This Happens
-Your environment variables are not set up correctly.
-
-### ✅ Solution
-
-**Option 1: Check if .env.local exists**
-```bash
-# From project directory
-ls -la .env.local
-
-# If you see "No such file or directory", create it:
-cp .env.example .env.local
-```
-
-**Option 2: Use the interactive setup script**
-```bash
-./scripts/setup-env.sh
-```
-
-**Option 3: Verify your .env.local has real values**
-```bash
-cat .env.local
-# Make sure you see actual URLs and keys, not placeholders like:
-# NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co  ❌ WRONG
-# 
-# Should look like:
-# NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co  ✅ CORRECT
-```
-
-See [ENV_SETUP.md](./ENV_SETUP.md) for detailed help.
 
 ---
 
