@@ -25,6 +25,15 @@ export default function Home() {
             </ol>
           </div>
 
+          <div className="flex justify-center mb-8">
+            <Link
+              href="/login"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-center font-semibold text-lg"
+            >
+              Sign In to Get Started
+            </Link>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
             <Link
               href="/admin"
