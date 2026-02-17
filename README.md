@@ -6,10 +6,11 @@ A web application for managing move-in and move-out processes in corporate livin
 
 **New to this project?** Start here:
 
-1. **[WHATS_NEXT.md](./WHATS_NEXT.md)** - Quick reference for getting started (recommended)
-2. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Detailed 3-day implementation guide
-3. **[SETUP.md](./SETUP.md)** - Complete setup instructions
-4. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
+1. **[ENV_SETUP.md](./ENV_SETUP.md)** - 🆕 Beginner's guide to environment variables (if you're confused about .env files)
+2. **[WHATS_NEXT.md](./WHATS_NEXT.md)** - Quick reference for getting started
+3. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Detailed 3-day implementation guide
+4. **[SETUP.md](./SETUP.md)** - Complete setup instructions
+5. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
 
 ## 📊 Project Status
 
@@ -55,23 +56,38 @@ cd corporate-living-app
 npm install
 ```
 
-### 3. Set Up Supabase
+### 3. Set Up Environment Variables
+
+**New to environment variables?** 📚 See [ENV_SETUP.md](./ENV_SETUP.md) for a detailed beginner-friendly guide!
+
+**Quick Setup:**
 
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Once your project is ready, go to **Settings** → **API** to find your credentials
-3. Copy `.env.example` to `.env.local`:
+3. **Choose ONE of these methods:**
 
-```bash
-cp .env.example .env.local
-```
+   **Option A: Interactive Setup (Recommended for beginners)** 🚀
+   ```bash
+   # Run the setup helper script
+   ./scripts/setup-env.sh
+   ```
+   This will guide you through the process step-by-step!
 
-4. Update `.env.local` with your Supabase credentials:
+   **Option B: Manual Setup**
+   ```bash
+   # Copy the template
+   cp .env.example .env.local
+   
+   # Edit .env.local and replace the placeholders with your actual values
+   # The file has detailed comments explaining each variable
+   ```
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+4. Get your credentials from Supabase:
+   - **Project URL**: Settings → API → Project URL
+   - **Anon Key**: Settings → API → anon public key
+   - **Service Role Key**: Settings → API → service_role key (keep secret!)
+
+**Need help?** The `.env.example` file has detailed comments for each variable!
 
 ### 4. Run Database Migrations
 
