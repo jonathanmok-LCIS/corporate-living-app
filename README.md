@@ -2,15 +2,23 @@
 
 A web application for managing move-in and move-out processes in corporate living houses. Built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
-## 🚀 Quick Start
+## ⚡ Super Quick Start
 
-**New to this project?** Start here:
+**Just want to get it running?** → **[QUICK_START.md](./QUICK_START.md)** ← Start here!
 
-1. **[ENV_SETUP.md](./ENV_SETUP.md)** - 🆕 Beginner's guide to environment variables (if you're confused about .env files)
-2. **[WHATS_NEXT.md](./WHATS_NEXT.md)** - Quick reference for getting started
-3. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Detailed 3-day implementation guide
-4. **[SETUP.md](./SETUP.md)** - Complete setup instructions
-5. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
+**Having errors?** → **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** ← Common issues solved!
+
+## 🚀 Full Documentation
+
+**New to this project?** Choose your path:
+
+1. **[QUICK_START.md](./QUICK_START.md)** - 🆕 Get running in 5 minutes!
+2. **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - 🆕 Fix common errors (like "Could not read package.json")
+3. **[ENV_SETUP.md](./ENV_SETUP.md)** - Beginner's guide to environment variables
+4. **[WHATS_NEXT.md](./WHATS_NEXT.md)** - Quick reference for getting started
+5. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Detailed 3-day implementation guide
+6. **[SETUP.md](./SETUP.md)** - Complete setup instructions
+7. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
 
 ## 📊 Project Status
 
@@ -43,11 +51,25 @@ A web application for managing move-in and move-out processes in corporate livin
 
 ## Setup Instructions
 
+> **⚠️ CRITICAL: Make sure you're in the project directory!**
+> 
+> Before running any commands below, navigate to the project directory:
+> ```bash
+> cd corporate-living-app
+> ```
+> 
+> Verify you're in the right place by checking for `package.json`:
+> ```bash
+> ls package.json  # Should show: package.json (not an error)
+> ```
+> 
+> **Common mistake:** Running `npm run dev` from your home directory will fail with "Could not read package.json" error. See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for help.
+
 ### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
-cd corporate-living-app
+cd corporate-living-app  # ← IMPORTANT: Navigate into the folder!
 ```
 
 ### 2. Install Dependencies
