@@ -238,6 +238,12 @@ export default function HousesPage() {
                     >
                       Rooms
                     </a>
+                    <a
+                      href={`/admin/houses/${house.id}/coordinators`}
+                      className="text-green-600 hover:text-green-900"
+                    >
+                      Coordinators
+                    </a>
                   </td>
                 </tr>
               ))
