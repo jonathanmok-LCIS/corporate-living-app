@@ -89,7 +89,7 @@ export default function MoveInAcknowledgementPage() {
             <SignatureCanvas
               ref={sigCanvas}
               canvasProps={{
-                className: 'w-full h-48 touch-none',
+                className: 'w-full h-48',
                 style: { touchAction: 'none' }
               }}
             />
