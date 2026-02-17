@@ -30,7 +30,7 @@ export async function createHouse(formData: FormData) {
 
   if (error) {
     console.error('Error creating house:', error)
-    throw new Error(error.message)
+    throw new Error(`Failed to create house: ${error.message}`)
   }
 
   revalidatePath('/dashboard/houses')
@@ -58,7 +58,7 @@ export async function updateHouse(id: string, formData: FormData) {
 
   if (error) {
     console.error('Error updating house:', error)
-    throw new Error(error.message)
+    throw new Error(`Failed to update house: ${error.message}`)
   }
 
   revalidatePath('/dashboard/houses')
@@ -76,7 +76,7 @@ export async function deleteHouse(id: string) {
 
   if (error) {
     console.error('Error deleting house:', error)
-    throw new Error(error.message)
+    throw new Error(`Failed to delete house: ${error.message}`)
   }
 
   revalidatePath('/dashboard/houses')

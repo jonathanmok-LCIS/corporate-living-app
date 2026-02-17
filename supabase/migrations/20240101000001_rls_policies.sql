@@ -227,15 +227,10 @@ CREATE POLICY "Admins and coordinators can create inspections"
   ON inspections FOR INSERT
   WITH CHECK (is_coordinator());
 
--- Admins and coordinators can update inspections (unless finalized)
-CREATE POLICY "Admins and coordinators can update inspections"
+-- Admins and coordinators can update inspections that are not finalized
+CREATE POLICY "Admins and coordinators can update non-finalized inspections"
   ON inspections FOR UPDATE
-  USING (is_coordinator() AND NOT is_finalized);
-
--- Coordinators can finalize inspections
-CREATE POLICY "Coordinators can finalize inspections"
-  ON inspections FOR UPDATE
-  USING (is_coordinator())
+  USING (is_coordinator() AND (SELECT NOT is_finalized FROM inspections WHERE id = inspections.id))
   WITH CHECK (is_coordinator());
 
 -- Admins can delete inspections

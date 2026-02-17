@@ -13,6 +13,10 @@ CREATE TYPE user_role AS ENUM ('ADMIN', 'COORDINATOR', 'TENANT');
 CREATE TYPE tenancy_status AS ENUM ('ACTIVE', 'PENDING', 'COMPLETED', 'CANCELLED');
 
 -- Inspection status enum
+-- DRAFT: Not yet started
+-- IN_PROGRESS: Being worked on
+-- COMPLETED: Inspection work finished but not yet locked
+-- FINALIZED: Locked and cannot be modified
 CREATE TYPE inspection_status AS ENUM ('DRAFT', 'IN_PROGRESS', 'COMPLETED', 'FINALIZED');
 
 -- Move-out intention status
