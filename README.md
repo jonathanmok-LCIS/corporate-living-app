@@ -55,59 +55,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ### Database Setup
 
-1. **Create a Supabase Project**: Go to [https://supabase.com](https://supabase.com) and create a new project.
+**Complete setup instructions are in [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)**
 
-2. **Run Migrations**: 
-   - In your Supabase Dashboard, go to SQL Editor
-   - Run the migration files in order:
-     - `supabase/migrations/20240101000000_initial_schema.sql`
-     - `supabase/migrations/20240101000001_rls_policies.sql`
-
-3. **Create Storage Buckets**:
-   - Go to Storage in your Supabase Dashboard
-   - Create two buckets:
-     - `inspection-photos` (for inspection photos)
-     - `signatures` (for move-in acknowledgement signatures)
-
-4. **Configure Storage Policies**:
-   
-   For `inspection-photos` bucket:
-   ```sql
-   -- Allow authenticated users to view photos for their inspections
-   CREATE POLICY "Authenticated users can view inspection photos"
-   ON storage.objects FOR SELECT
-   USING (
-     bucket_id = 'inspection-photos' AND
-     auth.role() = 'authenticated'
-   );
-
-   -- Allow coordinators/admins to upload photos
-   CREATE POLICY "Coordinators can upload inspection photos"
-   ON storage.objects FOR INSERT
-   WITH CHECK (
-     bucket_id = 'inspection-photos' AND
-     auth.role() = 'authenticated'
-   );
-   ```
-
-   For `signatures` bucket:
-   ```sql
-   -- Allow authenticated users to view signatures
-   CREATE POLICY "Authenticated users can view signatures"
-   ON storage.objects FOR SELECT
-   USING (
-     bucket_id = 'signatures' AND
-     auth.role() = 'authenticated'
-   );
-
-   -- Allow tenants to upload their signatures
-   CREATE POLICY "Tenants can upload signatures"
-   ON storage.objects FOR INSERT
-   WITH CHECK (
-     bucket_id = 'signatures' AND
-     auth.role() = 'authenticated'
-   );
-   ```
+Quick steps:
+1. Create a Supabase project
+2. Run migrations in SQL Editor:
+   - `supabase/migrations/20240101000000_initial_schema.sql`
+   - `supabase/migrations/20240101000001_rls_policies.sql`
+3. Create storage buckets: `inspection-photos` and `signatures`
+4. Configure storage policies (see MIGRATION_GUIDE.md)
 
 ### Development
 
@@ -125,6 +81,31 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 npm run build
 npm start
 ```
+
+## Implementation Status
+
+This is an **active MVP development**. Current status:
+
+### ✅ Implemented
+- Complete database schema with RLS policies
+- User authentication (login/signup)
+- Role-based access control (ADMIN, COORDINATOR, TENANT)
+- Protected routes with middleware
+- Dashboard with role-based navigation
+- Houses management (list and create)
+
+### 🚧 In Progress  
+- Houses management (edit, view, delete)
+- Rooms management
+- Tenancies management
+
+### 📋 Planned
+- Move-out intentions with email notifications
+- Inspection system with photo upload
+- Move-in acknowledgements with signature capture
+- Complete email notification system
+
+**See [FEATURES.md](./FEATURES.md) for detailed implementation status and roadmap.**
 
 ## Database Schema
 
