@@ -1,40 +1,66 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { House } from '@/lib/types';
+import { House, Room } from '@/lib/types';
 
-export default function HousesPage() {
-  const [houses, setHouses] = useState<House[]>([]);
+export default function RoomsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const houseId = params.id as string;
+  
+  const [house, setHouse] = useState<House | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
+    label: '',
+    capacity: 1,
   });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
-      fetchHouses();
+      fetchHouse();
+      fetchRooms();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [houseId]);
 
-  async function fetchHouses() {
+  async function fetchHouse() {
     if (!supabase) return;
     
     try {
       const { data, error } = await supabase
         .from('houses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('id', houseId)
+        .single();
 
       if (error) throw error;
-      setHouses(data || []);
+      setHouse(data);
     } catch (error) {
-      console.error('Error fetching houses:', error);
+      console.error('Error fetching house:', error);
+      router.push('/admin/houses');
+    }
+  }
+
+  async function fetchRooms() {
+    if (!supabase) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('house_id', houseId)
+        .order('label');
+
+      if (error) throw error;
+      setRooms(data || []);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
     } finally {
       setLoading(false);
     }
@@ -46,28 +72,33 @@ export default function HousesPage() {
     if (!supabase) return;
     
     try {
+      const roomData = {
+        ...formData,
+        house_id: houseId,
+      };
+
       if (editingId) {
         const { error } = await supabase
-          .from('houses')
+          .from('rooms')
           .update(formData)
           .eq('id', editingId);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('houses')
-          .insert([formData]);
+          .from('rooms')
+          .insert([roomData]);
 
         if (error) throw error;
       }
 
-      setFormData({ name: '', address: '' });
+      setFormData({ label: '', capacity: 1 });
       setEditingId(null);
       setShowForm(false);
-      fetchHouses();
-    } catch (error) {
-      console.error('Error saving house:', error);
-      alert('Error saving house. Please try again.');
+      fetchRooms();
+    } catch (error: any) {
+      console.error('Error saving room:', error);
+      alert(error?.message || 'Error saving room. Please try again.');
     }
   }
 
@@ -76,25 +107,25 @@ export default function HousesPage() {
     
     try {
       const { error } = await supabase
-        .from('houses')
+        .from('rooms')
         .update({ active: !active })
         .eq('id', id);
 
       if (error) throw error;
-      fetchHouses();
+      fetchRooms();
     } catch (error) {
-      console.error('Error updating house:', error);
+      console.error('Error updating room:', error);
     }
   }
 
-  function handleEdit(house: House) {
-    setFormData({ name: house.name, address: house.address || '' });
-    setEditingId(house.id);
+  function handleEdit(room: Room) {
+    setFormData({ label: room.label, capacity: room.capacity });
+    setEditingId(room.id);
     setShowForm(true);
   }
 
   function handleCancelEdit() {
-    setFormData({ name: '', address: '' });
+    setFormData({ label: '', capacity: 1 });
     setEditingId(null);
     setShowForm(false);
   }
@@ -110,50 +141,65 @@ export default function HousesPage() {
     );
   }
 
-  if (loading) {
+  if (loading || !house) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Houses</h1>
+      <div>
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          onClick={() => router.push('/admin/houses')}
+          className="text-purple-600 hover:text-purple-800 mb-4 flex items-center"
         >
-          {showForm ? 'Cancel' : 'Add House'}
+          ← Back to Houses
         </button>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{house.name}</h1>
+            <p className="text-gray-600">{house.address}</p>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            {showForm ? 'Cancel' : 'Add Room'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">
-            {editingId ? 'Edit House' : 'Add New House'}
+            {editingId ? 'Edit Room' : 'Add New Room'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name *
+                Room Label *
               </label>
               <input
                 type="text"
                 required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={formData.label}
+                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                placeholder="e.g., Room 101, Master Bedroom"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address
+                Capacity *
               </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              <select
+                required
+                value={formData.capacity}
+                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) as 1 | 2 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
-              />
+              >
+                <option value={1}>1 person</option>
+                <option value={2}>2 people</option>
+              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -179,10 +225,10 @@ export default function HousesPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
+                Room Label
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Address
+                Capacity
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -193,51 +239,45 @@ export default function HousesPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {houses.length === 0 ? (
+            {rooms.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                  No houses found. Add your first house to get started.
+                  No rooms found. Add rooms to this house.
                 </td>
               </tr>
             ) : (
-              houses.map((house) => (
-                <tr key={house.id}>
+              rooms.map((room) => (
+                <tr key={room.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{house.name}</div>
+                    <div className="text-sm font-medium text-gray-900">{room.label}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{house.address || '-'}</div>
+                    <div className="text-sm text-gray-500">{room.capacity} {room.capacity === 1 ? 'person' : 'people'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        house.active
+                        room.active
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {house.active ? 'Active' : 'Inactive'}
+                      {room.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
-                      onClick={() => handleEdit(house)}
+                      onClick={() => handleEdit(room)}
                       className="text-purple-600 hover:text-purple-900"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleToggleActive(house.id, house.active)}
+                      onClick={() => handleToggleActive(room.id, room.active)}
                       className="text-gray-600 hover:text-gray-900"
                     >
-                      {house.active ? 'Deactivate' : 'Activate'}
+                      {room.active ? 'Archive' : 'Activate'}
                     </button>
-                    <a
-                      href={`/admin/houses/${house.id}/rooms`}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Rooms
-                    </a>
                   </td>
                 </tr>
               ))
