@@ -8,6 +8,25 @@ A web application for managing move-in and move-out processes in corporate livin
 
 **Having errors?** → **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** ← Common issues solved!
 
+**Scripts not found?** → **[SCRIPTS_NOT_FOUND.md](./SCRIPTS_NOT_FOUND.md)** ← Need to `git pull`!
+
+---
+
+## 🔄 Keep Your Repository Updated!
+
+This project is actively being developed. Before running any commands, make sure you have the latest version:
+
+```bash
+# Pull the latest changes
+git pull
+
+# Then proceed with setup
+npm install
+npm run dev
+```
+
+**If you see "scripts not found" errors**, your repository is outdated. Run `git pull` first!
+
 ## 🚀 Full Documentation
 
 **New to this project?** Choose your path:

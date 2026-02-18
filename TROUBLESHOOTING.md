@@ -6,6 +6,7 @@ This guide helps you solve common issues when setting up and running the Corpora
 
 | # | Error | Quick Fix | Full Guide |
 |---|-------|-----------|------------|
+| 0 | **"Scripts not found"** (./scripts/*.sh) | `git pull` | [SCRIPTS_NOT_FOUND.md](./SCRIPTS_NOT_FOUND.md) |
 | 1 | "Your project's URL and Key are required" | `cp .env.example .env.local` + edit with credentials | [SUPABASE_ERROR_FIX.md](./SUPABASE_ERROR_FIX.md) |
 | 2 | "Could not read package.json" | `cd corporate-living-app` | [ERROR_SOLUTION.md](./ERROR_SOLUTION.md) |
 | 3 | "Module not found" | `npm install` | See below |
@@ -27,6 +28,37 @@ pwd
 # If you see just your home directory (/Users/yourname or /home/yourname),
 # you need to navigate to the project:
 cd corporate-living-app
+```
+
+---
+
+## 🚨 Common Error #0: Scripts Not Found
+
+### Error Message
+```bash
+zsh: no such file or directory: ./scripts/check-env.sh
+zsh: no such file or directory: ./scripts/setup-env.sh
+```
+
+### What This Means
+Your local repository doesn't have the latest changes. The setup scripts were added in recent commits.
+
+### Quick Fix
+```bash
+# Update your repository
+git pull
+
+# Verify scripts now exist
+ls scripts/
+```
+
+### If git pull doesn't work
+See the complete guide: **[SCRIPTS_NOT_FOUND.md](./SCRIPTS_NOT_FOUND.md)**
+
+**Alternative:** You don't need the scripts! Just manually create your `.env.local`:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
 ```
 
 ---

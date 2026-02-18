@@ -16,6 +16,27 @@ But you're seeing this error:
 
 The app needs your Supabase credentials to connect to your database. Right now, it doesn't have them.
 
+---
+
+## ⚠️ IMPORTANT: Scripts Not Found?
+
+If you're getting **"no such file or directory"** when trying to run the scripts:
+
+```bash
+zsh: no such file or directory: ./scripts/check-env.sh
+```
+
+**Your repository is outdated!** The scripts were added in recent updates.
+
+**Quick fix:**
+```bash
+git pull
+```
+
+Then the scripts will be available. See **[SCRIPTS_NOT_FOUND.md](./SCRIPTS_NOT_FOUND.md)** for full details.
+
+---
+
 ## ✅ How to Fix It (3 Easy Options)
 
 ### Option 1: Interactive Setup (Easiest - Recommended)
