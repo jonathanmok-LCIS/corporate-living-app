@@ -6,12 +6,33 @@
 
 ---
 
+## ⚠️ STEP 0: Check Your Directory FIRST!
+
+**CRITICAL:** If you see a warning about "**multiple lockfiles**", you're in the **wrong directory**!
+
+```bash
+# Check where you are:
+pwd
+
+# Should show: .../corporate-living-app/corporate-living-app
+#                                      ↑                   ↑
+#                          Project name appears TWICE
+
+# Check what's here:
+ls  # Should show: app/, lib/, package.json, etc.
+```
+
+**If you see "multiple lockfiles" warning or don't see `app/` folder:**  
+👉 **[WRONG_DIRECTORY_FIX.md](./WRONG_DIRECTORY_FIX.md)** ← Click here for fix!
+
+---
+
 ## ⚡ The Fastest Fix
 
 Open your terminal and run these 3 commands:
 
 ```bash
-cd corporate-living-app
+cd corporate-living-app  # Make sure you're in the right folder!
 npm install
 npm run dev
 ```
