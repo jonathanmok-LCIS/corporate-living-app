@@ -22,6 +22,14 @@ export default function AdminDashboard() {
           <p className="text-gray-600">Create and manage tenant assignments</p>
         </Link>
 
+        <Link
+          href="/admin/users"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
+        >
+          <h2 className="text-xl font-semibold text-purple-600 mb-2">Users</h2>
+          <p className="text-gray-600">Create and manage user accounts</p>
+        </Link>
+
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold text-purple-600 mb-2">Pending Actions</h2>
           <div className="space-y-2 text-sm">
