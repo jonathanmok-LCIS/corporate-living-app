@@ -153,7 +153,7 @@ export default function QuickSetupPage() {
           <h2 className="text-xl font-semibold mb-4">House Information</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-900 mb-1">
                 House Name *
               </label>
               <input
@@ -161,19 +161,19 @@ export default function QuickSetupPage() {
                 required
                 value={houseData.name}
                 onChange={(e) => setHouseData({ ...houseData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
                 placeholder="e.g., Main House, North Wing, Student House A"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-900 mb-1">
                 Address
               </label>
               <input
                 type="text"
                 value={houseData.address}
                 onChange={(e) => setHouseData({ ...houseData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
                 placeholder="123 Main St, City, State ZIP"
               />
             </div>
@@ -226,7 +226,7 @@ export default function QuickSetupPage() {
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-900 mb-1">
                         Room Label *
                       </label>
                       <input
@@ -234,18 +234,18 @@ export default function QuickSetupPage() {
                         required
                         value={room.label}
                         onChange={(e) => updateRoom(room.tempId, 'label', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
                         placeholder={`Room ${index + 1}`}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-900 mb-1">
                         Capacity *
                       </label>
                       <select
                         value={room.capacity}
                         onChange={(e) => updateRoom(room.tempId, 'capacity', parseInt(e.target.value) as 1 | 2)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500 text-gray-900"
                       >
                         <option value={1}>1 person</option>
                         <option value={2}>2 people</option>
