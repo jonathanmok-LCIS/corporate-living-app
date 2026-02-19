@@ -118,13 +118,42 @@ export default function HousesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Houses</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-        >
-          {showForm ? 'Cancel' : 'Add House'}
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/admin/houses/quick-setup"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Quick Setup
+          </a>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            {showForm ? 'Cancel' : 'Add House Only'}
+          </button>
+        </div>
       </div>
+
+      {/* Quick Setup Info Banner */}
+      {houses.length === 0 && !showForm && (
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                <span className="font-medium">Tip:</span> Use <strong>Quick Setup</strong> to create a house and add all its rooms in one streamlined workflow!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow">
