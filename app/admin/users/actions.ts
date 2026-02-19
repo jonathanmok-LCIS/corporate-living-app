@@ -1,6 +1,5 @@
 'use server';
 
-import { createClient } from '@/lib/supabase-server';
 import { UserRole } from '@/lib/types';
 
 interface CreateUserData {
@@ -12,9 +11,6 @@ interface CreateUserData {
 
 export async function createUser(data: CreateUserData) {
   try {
-    // Create Supabase server client
-    const supabase = await createClient();
-
     // Get the service role key for admin operations
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
@@ -51,8 +47,8 @@ export async function createUser(data: CreateUserData) {
       return { error: 'User creation failed - no user data returned' };
     }
 
-    // Create the profile record
-    const { error: profileError } = await supabase
+    // Create the profile record using admin client to bypass RLS
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert([{
         id: authData.user.id,
