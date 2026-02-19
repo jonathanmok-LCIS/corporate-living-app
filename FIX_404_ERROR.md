@@ -4,21 +4,28 @@ You're seeing **"404 - This page could not be found"** - let's fix it quickly!
 
 ## ⚡ Quick Fix (Most Common)
 
-**The dev server needs to be restarted after pulling new changes.**
+**After pulling new changes, you need to install dependencies and restart the dev server.**
 
 ```bash
 # 1. Stop the current dev server (Ctrl+C in the terminal)
 # Press Ctrl+C
 
-# 2. Restart the dev server
+# 2. Install dependencies (in case there are new ones)
+npm install
+
+# 3. Restart the dev server
 npm run dev
 
-# 3. Wait for "Ready in..." message
+# 4. Wait for "Ready in..." message
 # ✓ Ready in 689ms
 
-# 4. Try accessing the page again
+# 5. Try accessing the page again
 # Open http://localhost:3000/admin/houses
 ```
+
+**⚠️ IMPORTANT:** If this is your first time running the app after cloning/pulling, or if `npm run dev` fails with errors, you MUST run `npm install` first!
+
+> **See IMMEDIATE_FIX_404.md for step-by-step troubleshooting if the above doesn't work.**
 
 ---
 
