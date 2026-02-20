@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,13 +16,15 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    if (!supabase) {
+    if (!isSupabaseConfigured()) {
       setError('Supabase is not configured. Please check your environment variables.');
       setLoading(false);
       return;
     }
 
     try {
+      const supabase = createClient();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -41,6 +43,7 @@ export default function LoginPage() {
         console.error('Error fetching profile:', profileError);
         // Default to tenant if no profile found
         router.push('/tenant');
+        router.refresh();
         return;
       }
 
@@ -53,6 +56,9 @@ export default function LoginPage() {
       } else {
         router.push('/tenant');
       }
+      
+      // Force a refresh to update the session
+      router.refresh();
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');
