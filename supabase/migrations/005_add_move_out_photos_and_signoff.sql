@@ -23,7 +23,7 @@ USING (
     JOIN rooms r ON t.room_id = r.id
     JOIN house_coordinators hc ON r.house_id = hc.house_id
     WHERE t.id = move_out_intentions.tenancy_id
-      AND hc.coordinator_user_id = auth.uid()
+      AND hc.user_id = auth.uid()
   )
 )
 WITH CHECK (
