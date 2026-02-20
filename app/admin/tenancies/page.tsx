@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 import { Tenancy, Room, House, Profile } from '@/lib/types';
 import { createTenancy } from './actions';
+
+const isSupabaseConfigured = () => {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+};
 
 export default function TenanciesPage() {
   const [tenancies, setTenancies] = useState<any[]>([]);
@@ -33,7 +37,7 @@ export default function TenanciesPage() {
   }, []);
 
   async function fetchTenancies() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -55,7 +59,7 @@ export default function TenanciesPage() {
   }
 
   async function fetchRooms() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -72,7 +76,7 @@ export default function TenanciesPage() {
   }
 
   async function fetchHouses() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -89,7 +93,7 @@ export default function TenanciesPage() {
   }
 
   async function fetchTenants() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -155,7 +159,7 @@ export default function TenanciesPage() {
   async function handleEndTenancy(tenancyId: string) {
     if (!confirm('Are you sure you want to end this tenancy?')) return;
     
-    if (!supabase) return;
+    const supabase = createClient();
 
     try {
       const { error } = await supabase

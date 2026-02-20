@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 import { House, Room } from '@/lib/types';
+
+const isSupabaseConfigured = () => {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+};
 
 export default function RoomsPage() {
   const params = useParams();
@@ -30,7 +34,7 @@ export default function RoomsPage() {
   }, [houseId]);
 
   async function fetchHouse() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -48,7 +52,7 @@ export default function RoomsPage() {
   }
 
   async function fetchRooms() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -92,7 +96,7 @@ export default function RoomsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const roomData = {
@@ -126,7 +130,7 @@ export default function RoomsPage() {
   }
 
   async function handleToggleActive(id: string, active: boolean) {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { error } = await supabase
