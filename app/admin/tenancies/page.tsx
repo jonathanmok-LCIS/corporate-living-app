@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { Tenancy, Room, House, Profile } from '@/lib/types';
-import { createTenancy } from './actions';
+import { createTenancy, fetchTenanciesAdmin } from './actions';
 
 const isSupabaseConfigured = () => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 };
 
 export default function TenanciesPage() {
+  const router = useRouter();
   const [tenancies, setTenancies] = useState<any[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
@@ -37,20 +39,14 @@ export default function TenanciesPage() {
   }, []);
 
   async function fetchTenancies() {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('tenancies')
-        .select(`
-          *,
-          room:rooms(id, label, house_id),
-          tenant:profiles!tenant_user_id(id, name, email)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTenancies(data || []);
+      const result = await fetchTenanciesAdmin();
+      
+      if (result.error) {
+        console.error('Error fetching tenancies:', result.error);
+      } else {
+        setTenancies(result.data || []);
+      }
     } catch (error) {
       console.error('Error fetching tenancies:', error);
     } finally {
@@ -148,7 +144,11 @@ export default function TenanciesPage() {
         rental_price: '',
       });
       setShowForm(false);
-      fetchTenancies();
+      
+      // Refresh the page to ensure latest data
+      router.refresh();
+      await fetchTenancies();
+      
       alert('Tenancy created successfully');
     } catch (error: any) {
       console.error('Error creating tenancy:', error);

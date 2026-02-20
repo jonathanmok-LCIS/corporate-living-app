@@ -2,6 +2,49 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+// Helper to create admin client
+function getAdminClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Service role key not configured');
+  }
+  
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+}
+
+export async function fetchTenanciesAdmin() {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data, error } = await supabaseAdmin
+      .from('tenancies')
+      .select(`
+        *,
+        room:rooms(id, label, house_id),
+        tenant:profiles!tenant_user_id(id, name, email)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tenancies:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in fetchTenanciesAdmin:', error);
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+}
+
 export async function createTenancy(tenancyData: {
   room_id: string;
   tenant_user_id: string;
@@ -12,20 +55,7 @@ export async function createTenancy(tenancyData: {
 }) {
   try {
     // Create admin client with service role key to bypass RLS
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return { error: 'Service role key not configured. Please set SUPABASE_SERVICE_ROLE_KEY in .env.local' };
-    }
+    const supabaseAdmin = getAdminClient();
 
     const insertData: any = {
       room_id: tenancyData.room_id,
