@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { getTenantActiveTenancy } from './actions';
 
 export default function MoveOutIntentionPage() {
   const [loading, setLoading] = useState(false);
@@ -44,28 +45,17 @@ export default function MoveOutIntentionPage() {
     setLoading(true);
 
     try {
-      // 1. Get current user's active tenancy
-      const { data: { user } } = await supabase.auth.getUser();
+      // 1. Get current user's active tenancy using server action
+      const result = await getTenantActiveTenancy();
       
-      if (!user) {
-        alert('Please sign in to submit move-out intention');
-        return;
-      }
-
-      // 2. Find active tenancy for current user
-      const { data: tenancy, error: tenancyError } = await supabase
-        .from('tenancies')
-        .select('*')
-        .eq('tenant_user_id', user.id)
-        .eq('status', 'OCCUPIED')
-        .single();
-
-      if (tenancyError || !tenancy) {
+      if (result.error || !result.data) {
         alert('No active tenancy found. Please contact your administrator.');
         return;
       }
+      
+      const tenancy = result.data;
 
-      // 3. Upload photos if any
+      // 2. Upload photos if any
       setUploadingPhotos(true);
       const keyAreaPhotoUrls: string[] = [];
       const damagePhotoUrls: string[] = [];
@@ -81,7 +71,7 @@ export default function MoveOutIntentionPage() {
       }
       setUploadingPhotos(false);
 
-      // 4. Create move-out intention with photos
+      // 3. Create move-out intention with photos
       const { error: intentionError } = await supabase
         .from('move_out_intentions')
         .insert([{
@@ -95,7 +85,7 @@ export default function MoveOutIntentionPage() {
 
       if (intentionError) throw intentionError;
 
-      // 5. Update tenancy status
+      // 4. Update tenancy status
       const { error: updateError } = await supabase
         .from('tenancies')
         .update({ status: 'MOVE_OUT_INTENDED' })
