@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LogoutButton from '@/components/LogoutButton';
 
 export default function TenantLayout({
   children,
@@ -11,7 +12,7 @@ export default function TenantLayout({
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="text-xl font-bold">
+              <Link href="/tenant" className="text-xl font-bold hover:text-blue-100">
                 Corporate Living
               </Link>
               <div className="hidden md:flex space-x-4">
@@ -26,8 +27,9 @@ export default function TenantLayout({
                 </Link>
               </div>
             </div>
-            <div className="text-sm">
-              <span className="bg-blue-800 px-3 py-1 rounded">Tenant</span>
+            <div className="flex items-center space-x-4">
+              <span className="bg-blue-800 px-3 py-1 rounded text-sm">Tenant</span>
+              <LogoutButton />
             </div>
           </div>
         </div>

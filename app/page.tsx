@@ -1,6 +1,9 @@
 import Link from 'next/link';
 
 export default function Home() {
+  // Note: Authenticated users are automatically redirected to their portal by middleware
+  // This page is only shown to unauthenticated users
+  
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
       <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
@@ -25,38 +28,12 @@ export default function Home() {
             </ol>
           </div>
 
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center my-8">
             <Link
               href="/login"
               className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-center font-semibold text-lg"
             >
               Sign In to Get Started
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-            <Link
-              href="/admin"
-              className="bg-purple-600 text-white p-6 rounded-lg hover:bg-purple-700 transition-colors text-center"
-            >
-              <h3 className="text-xl font-semibold mb-2">Admin Portal</h3>
-              <p className="text-sm opacity-90">Manage houses, rooms, and tenancies</p>
-            </Link>
-
-            <Link
-              href="/coordinator"
-              className="bg-green-600 text-white p-6 rounded-lg hover:bg-green-700 transition-colors text-center"
-            >
-              <h3 className="text-xl font-semibold mb-2">Coordinator Portal</h3>
-              <p className="text-sm opacity-90">Manage inspections and photos</p>
-            </Link>
-
-            <Link
-              href="/tenant"
-              className="bg-blue-600 text-white p-6 rounded-lg hover:bg-blue-700 transition-colors text-center"
-            >
-              <h3 className="text-xl font-semibold mb-2">Tenant Portal</h3>
-              <p className="text-sm opacity-90">Submit move-out and sign move-in</p>
             </Link>
           </div>
         </div>
@@ -70,6 +47,27 @@ export default function Home() {
             <li>Email notifications for key events</li>
             <li>Role-based access control (Admin, Coordinator, Tenant)</li>
           </ul>
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Role-Based Portals</h3>
+          <div className="space-y-2 text-gray-700">
+            <div className="flex items-start">
+              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-semibold mr-2 mt-0.5">ADMIN</span>
+              <span>Manage houses, rooms, tenancies, and users</span>
+            </div>
+            <div className="flex items-start">
+              <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-semibold mr-2 mt-0.5">COORDINATOR</span>
+              <span>Manage inspections with checklists and photos</span>
+            </div>
+            <div className="flex items-start">
+              <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-semibold mr-2 mt-0.5">TENANT</span>
+              <span>Submit move-out intentions and sign move-in documents</span>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mt-4">
+            After logging in, you'll be automatically directed to your appropriate portal based on your role.
+          </p>
         </div>
       </div>
     </div>
