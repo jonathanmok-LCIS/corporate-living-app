@@ -2,18 +2,19 @@
 
 -- Add photo URL columns for key areas and damages
 ALTER TABLE move_out_intentions
-ADD COLUMN key_area_photos TEXT[] DEFAULT '{}',
-ADD COLUMN damage_photos TEXT[] DEFAULT '{}',
-ADD COLUMN coordinator_signed_off_by UUID REFERENCES profiles(id),
-ADD COLUMN coordinator_signed_off_at TIMESTAMPTZ,
-ADD COLUMN coordinator_notes TEXT,
-ADD COLUMN sign_off_status VARCHAR(20) DEFAULT 'PENDING' CHECK (sign_off_status IN ('PENDING', 'APPROVED', 'REJECTED'));
+ADD COLUMN IF NOT EXISTS key_area_photos TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS damage_photos TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS coordinator_signed_off_by UUID REFERENCES profiles(id),
+ADD COLUMN IF NOT EXISTS coordinator_signed_off_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS coordinator_notes TEXT,
+ADD COLUMN IF NOT EXISTS sign_off_status VARCHAR(20) DEFAULT 'PENDING' CHECK (sign_off_status IN ('PENDING', 'APPROVED', 'REJECTED'));
 
 -- Add index for coordinator lookups
-CREATE INDEX idx_move_out_intentions_coordinator ON move_out_intentions(coordinator_signed_off_by);
-CREATE INDEX idx_move_out_intentions_sign_off_status ON move_out_intentions(sign_off_status);
+CREATE INDEX IF NOT EXISTS idx_move_out_intentions_coordinator ON move_out_intentions(coordinator_signed_off_by);
+CREATE INDEX IF NOT EXISTS idx_move_out_intentions_sign_off_status ON move_out_intentions(sign_off_status);
 
 -- Update RLS policies to allow coordinators to sign off
+DROP POLICY IF EXISTS "Coordinators can update sign-off" ON move_out_intentions;
 CREATE POLICY "Coordinators can update sign-off" ON move_out_intentions
 FOR UPDATE
 USING (
