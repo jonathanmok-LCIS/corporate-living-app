@@ -177,7 +177,8 @@ export default function InspectionsPage() {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-900">All Inspections</h2>
         </div>
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -247,6 +248,7 @@ export default function InspectionsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
