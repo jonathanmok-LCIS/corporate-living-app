@@ -11,6 +11,15 @@ export default function MoveOutIntentionPage() {
   const [formData, setFormData] = useState({
     plannedMoveOutDate: '',
     notes: '',
+    rentPaidUp: '',
+    areasCleaned: '',
+    hasDamage: '',
+    damageDescription: '',
+    bankName: '',
+    accountName: '',
+    bsb: '',
+    accountNumber: '',
+    bankBranch: '',
   });
   const [keyAreaPhotos, setKeyAreaPhotos] = useState<File[]>([]);
   const [damagePhotos, setDamagePhotos] = useState<File[]>([]);
@@ -71,7 +80,7 @@ export default function MoveOutIntentionPage() {
       }
       setUploadingPhotos(false);
 
-      // 3. Create move-out intention with photos
+      // 3. Create move-out intention with photos and all form data
       const { error: intentionError } = await supabase
         .from('move_out_intentions')
         .insert([{
@@ -80,6 +89,15 @@ export default function MoveOutIntentionPage() {
           notes: formData.notes || null,
           key_area_photos: keyAreaPhotoUrls,
           damage_photos: damagePhotoUrls,
+          rent_paid_up: formData.rentPaidUp === 'yes',
+          areas_cleaned: formData.areasCleaned === 'yes',
+          has_damage: formData.hasDamage === 'yes',
+          damage_description: formData.hasDamage === 'yes' ? formData.damageDescription : null,
+          bank_name: formData.bankName || null,
+          account_name: formData.accountName || null,
+          bsb: formData.bsb || null,
+          account_number: formData.accountNumber || null,
+          bank_branch: formData.bankBranch || null,
           sign_off_status: 'PENDING',
         }]);
 
@@ -182,22 +200,128 @@ export default function MoveOutIntentionPage() {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Notes (Optional)
+          {/* Rent Payment Confirmation */}
+          <div className="border-t pt-4">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Have you paid all the rent up to the very day of your moving out? *
             </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Any additional information about your move-out..."
-            />
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="rentPaidUp"
+                  value="yes"
+                  required
+                  checked={formData.rentPaidUp === 'yes'}
+                  onChange={(e) => setFormData({ ...formData, rentPaidUp: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">Yes</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="rentPaidUp"
+                  value="no"
+                  required
+                  checked={formData.rentPaidUp === 'no'}
+                  onChange={(e) => setFormData({ ...formData, rentPaidUp: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">No</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Cleaning Confirmation */}
+          <div className="border-t pt-4">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Have you cleaned your bedroom and all common areas? *
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="areasCleaned"
+                  value="yes"
+                  required
+                  checked={formData.areasCleaned === 'yes'}
+                  onChange={(e) => setFormData({ ...formData, areasCleaned: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">Yes</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="areasCleaned"
+                  value="no"
+                  required
+                  checked={formData.areasCleaned === 'no'}
+                  onChange={(e) => setFormData({ ...formData, areasCleaned: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">No</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Damage Question */}
+          <div className="border-t pt-4">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Have you caused any damage/stain to any part of the house? *
+            </label>
+            <p className="text-sm text-gray-600 mb-2">
+              You should try your best to repair any damages incurred, otherwise any cost of repair will be deducted from your bond.
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="hasDamage"
+                  value="yes"
+                  required
+                  checked={formData.hasDamage === 'yes'}
+                  onChange={(e) => setFormData({ ...formData, hasDamage: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">Yes</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="hasDamage"
+                  value="no"
+                  required
+                  checked={formData.hasDamage === 'no'}
+                  onChange={(e) => setFormData({ ...formData, hasDamage: e.target.value })}
+                  className="mr-2"
+                />
+                <span className="text-gray-900">No</span>
+              </label>
+            </div>
+
+            {/* Damage Description - shown if "Yes" */}
+            {formData.hasDamage === 'yes' && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Please specify the damage/stain details *
+                </label>
+                <textarea
+                  required={formData.hasDamage === 'yes'}
+                  value={formData.damageDescription}
+                  onChange={(e) => setFormData({ ...formData, damageDescription: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Describe the damage, location, and any repairs you have made..."
+                />
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Key Area Photos (Kitchen, Bathroom, Living Room, etc.)
+              General Condition Photos (Kitchen, Bathroom, Living Room, Bedroom, etc.)
             </label>
             <input
               type="file"
@@ -207,7 +331,7 @@ export default function MoveOutIntentionPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Upload photos of key areas in your room (multiple photos allowed)
+              Upload photos of key areas in your room and common areas (multiple photos allowed)
             </p>
             {keyAreaPhotos.length > 0 && (
               <p className="text-sm text-green-600 mt-1">
@@ -218,7 +342,7 @@ export default function MoveOutIntentionPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Damage Photos (If any)
+              Damage/Stain Photos (If applicable)
             </label>
             <input
               type="file"
@@ -228,7 +352,7 @@ export default function MoveOutIntentionPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Upload photos of any damages or issues (multiple photos allowed)
+              Upload photos of any damages or stains (multiple photos allowed)
             </p>
             {damagePhotos.length > 0 && (
               <p className="text-sm text-green-600 mt-1">
@@ -237,14 +361,126 @@ export default function MoveOutIntentionPage() {
             )}
           </div>
 
+          {/* Bank Account Details for Bond Return */}
+          <div className="border-t pt-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              For the return of bond money, please transfer the amount to the following bank account:
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Bank *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.bankName}
+                  onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="e.g., Commonwealth Bank, ANZ, Westpac"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Account Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.accountName}
+                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Name as it appears on your account"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  BSB *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.bsb}
+                  onChange={(e) => {
+                    // Format BSB as XXX-XXX
+                    const value = e.target.value.replace(/\D/g, '').substring(0, 6);
+                    const formatted = value.length > 3 ? `${value.substring(0, 3)}-${value.substring(3)}` : value;
+                    setFormData({ ...formData, bsb: formatted });
+                  }}
+                  pattern="[0-9]{3}-[0-9]{3}"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="XXX-XXX"
+                />
+                <p className="text-sm text-gray-500 mt-1">6-digit BSB number (format: XXX-XXX)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Bank Account Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.accountNumber}
+                  onChange={(e) => {
+                    // Only allow numbers, max 10 digits
+                    const value = e.target.value.replace(/\D/g, '').substring(0, 10);
+                    setFormData({ ...formData, accountNumber: value });
+                  }}
+                  pattern="[0-9]{6,10}"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="6-10 digit account number"
+                />
+                <p className="text-sm text-gray-500 mt-1">6-10 digit account number</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Bank Branch
+                </label>
+                <input
+                  type="text"
+                  value={formData.bankBranch}
+                  onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Branch name or location (optional)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Additional Notes (Optional)
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Any additional information about your move-out..."
+            />
+          </div>
+
           <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">What happens next?</h3>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-yellow-700">
+            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Further instructions for moving out:</h3>
+            <ul className="list-disc list-inside space-y-2 text-sm text-yellow-700">
+              <li>You need to make arrangement with your house coordinator to pay for all the amount owing for utilities (gas/electricity/water/internet/phone)</li>
+              <li>You need to thoroughly clean your room as well as the common area and ask your house coordinator to check if it has reached satisfaction standard</li>
+              <li>Return the key(s) given to you at the start of your tenancy</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+            <h3 className="text-sm font-semibold text-blue-800 mb-2">What happens next?</h3>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-blue-700">
               <li>Your house coordinators and admins will be notified</li>
               <li>A coordinator will review your submission and photos</li>
               <li>A coordinator will schedule a move-out inspection</li>
-              <li>You&apos;ll need to ensure the room is clean and undamaged</li>
-              <li>After coordinator approval, your bond refund will be processed</li>
+              <li>After coordinator approval, your bond refund will be processed to the bank account provided</li>
             </ol>
           </div>
 
