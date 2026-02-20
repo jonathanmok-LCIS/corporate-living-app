@@ -67,9 +67,9 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Protect tenant routes
+    // Protect tenant routes - allow both TENANT and COORDINATOR
     if (pathname.startsWith('/tenant')) {
-      if (userRole !== 'TENANT') {
+      if (userRole !== 'TENANT' && userRole !== 'COORDINATOR') {
         const redirectPath = userRole && roleRoutes[userRole as keyof typeof roleRoutes]
           ? roleRoutes[userRole as keyof typeof roleRoutes]
           : '/admin';

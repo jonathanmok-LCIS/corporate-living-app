@@ -33,7 +33,20 @@ export default function UsersPage() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          house_coordinators(
+            house:houses(id, name)
+          ),
+          tenancies!tenant_user_id(
+            room:rooms(
+              id,
+              label,
+              house:houses(id, name)
+            ),
+            status
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -240,6 +253,9 @@ export default function UsersPage() {
                 Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                House Assignment
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                 Created
               </th>
             </tr>
@@ -247,35 +263,69 @@ export default function UsersPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                   No users found. Create your first user to get started.
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.role === 'ADMIN' 
-                        ? 'bg-purple-100 text-purple-800'
-                        : user.role === 'COORDINATOR'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))
+              users.map((user: any) => {
+                // Get house assignments based on role
+                let houseAssignments: string[] = [];
+                
+                if (user.role === 'COORDINATOR' && user.house_coordinators) {
+                  houseAssignments = user.house_coordinators
+                    .map((hc: any) => hc.house?.name)
+                    .filter(Boolean);
+                } else if ((user.role === 'TENANT' || user.role === 'COORDINATOR') && user.tenancies) {
+                  // Get active tenancies only
+                  const activeTenancies = user.tenancies.filter((t: any) => t.status === 'OCCUPIED');
+                  houseAssignments = activeTenancies
+                    .map((t: any) => {
+                      const houseName = t.room?.house?.name;
+                      const roomLabel = t.room?.label;
+                      return houseName && roomLabel ? `${houseName} - ${roomLabel}` : null;
+                    })
+                    .filter(Boolean);
+                }
+
+                return (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.role === 'ADMIN' 
+                          ? 'bg-purple-100 text-purple-800'
+                          : user.role === 'COORDINATOR'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">
+                        {houseAssignments.length > 0 ? (
+                          <div className="space-y-1">
+                            {houseAssignments.map((assignment, idx) => (
+                              <div key={idx}>{assignment}</div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">None</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

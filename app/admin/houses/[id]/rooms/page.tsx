@@ -53,12 +53,35 @@ export default function RoomsPage() {
     try {
       const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select(`
+          *,
+          tenancies!left(
+            id,
+            tenant_user_id,
+            start_date,
+            end_date,
+            rental_price,
+            status,
+            slot,
+            tenant:profiles!tenant_user_id(
+              id,
+              name,
+              email
+            )
+          )
+        `)
         .eq('house_id', houseId)
         .order('label');
 
       if (error) throw error;
-      setRooms(data || []);
+      
+      // Filter to show only active/occupied tenancies
+      const roomsWithTenancies = (data || []).map(room => ({
+        ...room,
+        tenancies: room.tenancies?.filter((t: any) => t.status === 'OCCUPIED') || []
+      }));
+      
+      setRooms(roomsWithTenancies);
     } catch (error) {
       console.error('Error fetching rooms:', error);
     } finally {
@@ -231,6 +254,21 @@ export default function RoomsPage() {
                 Capacity
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tenant Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contact Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Start Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                End Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Rental Price
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -241,46 +279,83 @@ export default function RoomsPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {rooms.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                   No rooms found. Add rooms to this house.
                 </td>
               </tr>
             ) : (
-              rooms.map((room) => (
-                <tr key={room.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{room.label}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{room.capacity} {room.capacity === 1 ? 'person' : 'people'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        room.active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {room.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleEdit(room)}
-                      className="text-purple-600 hover:text-purple-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(room.id, room.active)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      {room.active ? 'Archive' : 'Activate'}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              rooms.map((room: any) => {
+                const activeTenancy = room.tenancies?.[0];
+                return (
+                  <tr key={room.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{room.label}</div>
+                      {room.capacity === 2 && activeTenancy?.slot && (
+                        <div className="text-xs text-gray-500">Slot: {activeTenancy.slot}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{room.capacity} {room.capacity === 1 ? 'person' : 'people'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {activeTenancy?.tenant?.name || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {activeTenancy?.tenant?.email || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {activeTenancy?.start_date 
+                          ? new Date(activeTenancy.start_date).toLocaleDateString()
+                          : '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {activeTenancy?.end_date 
+                          ? new Date(activeTenancy.end_date).toLocaleDateString()
+                          : '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {activeTenancy?.rental_price 
+                          ? `$${parseFloat(activeTenancy.rental_price).toFixed(2)}`
+                          : '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          room.active
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {room.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEdit(room)}
+                        className="text-purple-600 hover:text-purple-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(room.id, room.active)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        {room.active ? 'Archive' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

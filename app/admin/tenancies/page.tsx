@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Tenancy, Room, House, Profile } from '@/lib/types';
+import { createTenancy } from './actions';
 
 export default function TenanciesPage() {
   const [tenancies, setTenancies] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export default function TenanciesPage() {
     tenant_user_id: '',
     start_date: '',
     end_date: '',
+    rental_price: '',
   });
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function TenanciesPage() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'TENANT')
+        .in('role', ['TENANT', 'COORDINATOR'])
         .order('name');
 
       if (error) throw error;
@@ -106,14 +108,11 @@ export default function TenanciesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    if (!supabase) return;
-    
     try {
       const tenancyData: any = {
         room_id: formData.room_id,
         tenant_user_id: formData.tenant_user_id,
         start_date: formData.start_date,
-        status: 'OCCUPIED',
       };
 
       // Only add slot if room capacity is 2
@@ -126,11 +125,15 @@ export default function TenanciesPage() {
         tenancyData.end_date = formData.end_date;
       }
 
-      const { error } = await supabase
-        .from('tenancies')
-        .insert([tenancyData]);
+      if (formData.rental_price) {
+        tenancyData.rental_price = parseFloat(formData.rental_price);
+      }
 
-      if (error) throw error;
+      const result = await createTenancy(tenancyData);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
       setFormData({
         room_id: '',
@@ -138,6 +141,7 @@ export default function TenanciesPage() {
         tenant_user_id: '',
         start_date: '',
         end_date: '',
+        rental_price: '',
       });
       setShowForm(false);
       fetchTenancies();
@@ -286,6 +290,21 @@ export default function TenanciesPage() {
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rental Price (Optional)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.rental_price}
+                onChange={(e) => setFormData({ ...formData, rental_price: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                placeholder="0.00"
               />
             </div>
 
