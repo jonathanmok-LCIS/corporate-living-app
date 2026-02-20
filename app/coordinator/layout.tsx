@@ -22,6 +22,9 @@ export default function CoordinatorLayout({
                 <Link href="/coordinator/inspections" className="hover:bg-green-700 px-3 py-2 rounded">
                   Inspections
                 </Link>
+                <Link href="/coordinator/move-out-reviews" className="hover:bg-green-700 px-3 py-2 rounded">
+                  Move-Out Reviews
+                </Link>
               </div>
             </div>
             <div className="flex items-center space-x-4">
