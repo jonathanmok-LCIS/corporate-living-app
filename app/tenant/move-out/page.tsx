@@ -15,11 +15,6 @@ export default function MoveOutIntentionPage() {
     areasCleaned: '',
     hasDamage: '',
     damageDescription: '',
-    bankName: '',
-    accountName: '',
-    bsb: '',
-    accountNumber: '',
-    bankBranch: '',
   });
   const [keyAreaPhotos, setKeyAreaPhotos] = useState<File[]>([]);
   const [damagePhotos, setDamagePhotos] = useState<File[]>([]);
@@ -93,11 +88,6 @@ export default function MoveOutIntentionPage() {
           areas_cleaned: formData.areasCleaned === 'yes',
           has_damage: formData.hasDamage === 'yes',
           damage_description: formData.hasDamage === 'yes' ? formData.damageDescription : null,
-          bank_name: formData.bankName || null,
-          account_name: formData.accountName || null,
-          bsb: formData.bsb || null,
-          account_number: formData.accountNumber || null,
-          bank_branch: formData.bankBranch || null,
           sign_off_status: 'PENDING',
         }]);
 
@@ -361,94 +351,16 @@ export default function MoveOutIntentionPage() {
             )}
           </div>
 
-          {/* Bank Account Details for Bond Return */}
+          {/* Bond Return Information */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              For the return of bond money, please transfer the amount to the following bank account:
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Bank *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.bankName}
-                  onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="e.g., Commonwealth Bank, ANZ, Westpac"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Account Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.accountName}
-                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Name as it appears on your account"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  BSB *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.bsb}
-                  onChange={(e) => {
-                    // Format BSB as XXX-XXX
-                    const value = e.target.value.replace(/\D/g, '').substring(0, 6);
-                    const formatted = value.length > 3 ? `${value.substring(0, 3)}-${value.substring(3)}` : value;
-                    setFormData({ ...formData, bsb: formatted });
-                  }}
-                  pattern="[0-9]{3}-[0-9]{3}"
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="XXX-XXX"
-                />
-                <p className="text-sm text-gray-500 mt-1">6-digit BSB number (format: XXX-XXX)</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Bank Account Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.accountNumber}
-                  onChange={(e) => {
-                    // Only allow numbers, max 10 digits
-                    const value = e.target.value.replace(/\D/g, '').substring(0, 10);
-                    setFormData({ ...formData, accountNumber: value });
-                  }}
-                  pattern="[0-9]{6,10}"
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="6-10 digit account number"
-                />
-                <p className="text-sm text-gray-500 mt-1">6-10 digit account number</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Bank Branch
-                </label>
-                <input
-                  type="text"
-                  value={formData.bankBranch}
-                  onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Branch name or location (optional)"
-                />
-              </div>
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                Bond Return Arrangements
+              </h3>
+              <p className="text-blue-800">
+                Bond return arrangements will be handled directly with the coordinator outside this system. 
+                Your coordinator will contact you regarding the bond refund process after the move-out inspection is complete.
+              </p>
             </div>
           </div>
 
@@ -480,7 +392,7 @@ export default function MoveOutIntentionPage() {
               <li>Your house coordinators and admins will be notified</li>
               <li>A coordinator will review your submission and photos</li>
               <li>A coordinator will schedule a move-out inspection</li>
-              <li>After coordinator approval, your bond refund will be processed to the bank account provided</li>
+              <li>After coordinator approval, your bond refund will be arranged directly with you</li>
             </ol>
           </div>
 

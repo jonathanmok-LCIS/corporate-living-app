@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { House, Room } from '@/lib/types';
+import { fetchRoomsWithTenancies } from './actions';
 
 const isSupabaseConfigured = () => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -52,40 +53,16 @@ export default function RoomsPage() {
   }
 
   async function fetchRooms() {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select(`
-          *,
-          tenancies!left(
-            id,
-            tenant_user_id,
-            start_date,
-            end_date,
-            rental_price,
-            status,
-            slot,
-            tenant:profiles!tenant_user_id(
-              id,
-              name,
-              email
-            )
-          )
-        `)
-        .eq('house_id', houseId)
-        .order('label');
-
-      if (error) throw error;
+      // Use server action with admin client for reliable tenant data
+      const result = await fetchRoomsWithTenancies(houseId);
       
-      // Filter to show only active/occupied tenancies
-      const roomsWithTenancies = (data || []).map(room => ({
-        ...room,
-        tenancies: room.tenancies?.filter((t: any) => t.status === 'OCCUPIED') || []
-      }));
+      if (result.error) {
+        console.error('Error fetching rooms:', result.error);
+        return;
+      }
       
-      setRooms(roomsWithTenancies);
+      setRooms(result.data || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
     } finally {
