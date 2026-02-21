@@ -99,8 +99,6 @@ export default function HouseCoordinatorsPage() {
       alert(error?.message || 'Error assigning coordinator');
     }
   }
-    }
-  }
 
   async function handleRemoveCoordinator(coordinatorId: string) {
     if (!confirm('Are you sure you want to remove this coordinator?')) return;
