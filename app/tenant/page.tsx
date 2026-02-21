@@ -15,26 +15,35 @@ export default function TenantDashboard() {
 
   async function fetchTenancy() {
     try {
-      console.log('Dashboard: Fetching tenancy...');
+      console.log('=== DASHBOARD: Fetching tenancy ===');
       const result = await getTenantActiveTenancy();
       
-      console.log('Dashboard: Result:', result);
+      console.log('=== DASHBOARD: Result received ===');
+      console.log('Has data:', !!result.data);
+      console.log('Has error:', !!result.error);
+      console.log('Full result:', JSON.stringify(result, null, 2));
       
       if (result.error) {
-        console.error('Dashboard: Error from server:', result.error);
+        console.error('DASHBOARD ERROR:', result.error);
         setError(result.error);
+        setTenancy(null);
       } else if (result.data) {
-        console.log('Dashboard: Tenancy data received:', result.data);
+        console.log('DASHBOARD SUCCESS: Tenancy data received');
+        console.log('Tenancy ID:', result.data.id);
+        console.log('Status:', result.data.status);
+        console.log('Room:', result.data.room?.label);
+        console.log('House:', result.data.room?.house?.name);
         setTenancy(result.data);
         setError(null);
       } else {
-        console.log('Dashboard: No tenancy data found (not an error)');
+        console.log('DASHBOARD: No tenancy data (check server logs for reason)');
         setTenancy(null);
         setError(null);
       }
     } catch (error) {
-      console.error('Dashboard: Exception:', error);
+      console.error('DASHBOARD EXCEPTION:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
+      setTenancy(null);
     } finally {
       setLoading(false);
     }

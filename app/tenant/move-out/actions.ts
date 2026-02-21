@@ -21,10 +21,49 @@ export async function getTenantActiveTenancy() {
       return { data: null, error: 'Not authenticated' };
     }
 
-    console.log('getTenantActiveTenancy: Fetching for user', user.id);
+    console.log('=== DIAGNOSTIC START ===');
+    console.log('Auth user.id:', user.id);
+    console.log('Auth user.email:', user.email);
 
-    // Use admin client to bypass RLS and query by user ID
+    // Use admin client to bypass RLS
     const supabaseAdmin = getAdminClient();
+    
+    // DIAGNOSTIC: Check if profile exists for this auth user
+    const { data: profileCheck, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, name, role')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    console.log('Profile check for user.id:', profileCheck);
+    if (profileError) {
+      console.error('Profile check error:', profileError);
+    }
+    
+    if (!profileCheck) {
+      console.error('CRITICAL: No profile found for auth user.id:', user.id);
+      return { 
+        data: null, 
+        error: `No profile found for user ${user.email}. Profile must be created before tenancy access.` 
+      };
+    }
+
+    // DIAGNOSTIC: Check ALL tenancies for this user (not just active statuses)
+    const { data: allTenancies, error: allError } = await supabaseAdmin
+      .from('tenancies')
+      .select('id, tenant_user_id, status, start_date, end_date, created_at')
+      .eq('tenant_user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    console.log('All tenancies for user.id:', allTenancies);
+    console.log('Total tenancies found:', allTenancies?.length || 0);
+    if (allError) {
+      console.error('All tenancies check error:', allError);
+    }
+
+    // Now query active tenancies with full details
+    const activeStatuses = ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE', 'MOVE_OUT_INSPECTION_DRAFT', 'MOVE_OUT_INSPECTION_FINAL'];
+    console.log('Querying active tenancies with statuses:', activeStatuses);
     
     const { data, error } = await supabaseAdmin
       .from('tenancies')
@@ -40,7 +79,7 @@ export async function getTenantActiveTenancy() {
         )
       `)
       .eq('tenant_user_id', user.id)
-      .in('status', ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE', 'MOVE_OUT_INSPECTION_DRAFT', 'MOVE_OUT_INSPECTION_FINAL'])
+      .in('status', activeStatuses)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -51,14 +90,27 @@ export async function getTenantActiveTenancy() {
     }
 
     if (!data) {
-      console.log('getTenantActiveTenancy: No active tenancy found for user', user.id);
-      return { data: null, error: null }; // Return null error when no tenancy (not an error condition)
+      console.log('getTenantActiveTenancy: No ACTIVE tenancy found');
+      console.log('Possible reasons:');
+      console.log('- All tenancies have status ENDED');
+      console.log('- Tenancies exist but tenant_user_id does not match auth user.id');
+      console.log('- No tenancy records exist at all');
+      console.log('=== DIAGNOSTIC END ===');
+      return { data: null, error: null };
     }
 
-    console.log('getTenantActiveTenancy: Found tenancy', data.id, 'with status', data.status);
+    console.log('getTenantActiveTenancy: Found active tenancy:', {
+      id: data.id,
+      status: data.status,
+      tenant_user_id: data.tenant_user_id,
+      room: data.room?.label,
+      house: data.room?.house?.name
+    });
+    console.log('=== DIAGNOSTIC END ===');
     return { data, error: null };
   } catch (error) {
     console.error('getTenantActiveTenancy: Exception:', error);
+    console.log('=== DIAGNOSTIC END (ERROR) ===');
     return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }
