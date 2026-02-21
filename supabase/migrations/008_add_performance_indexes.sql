@@ -7,8 +7,7 @@ ON tenancies(status);
 
 -- Tenancies by tenant (user's own data lookups)
 CREATE INDEX IF NOT EXISTS idx_tenancies_tenant_user 
-ON tenancies(tenant_user_id) 
-WHERE deleted_at IS NULL;
+ON tenancies(tenant_user_id);
 
 -- Move-out intentions by status (coordinator review queue)
 CREATE INDEX IF NOT EXISTS idx_move_out_status 
