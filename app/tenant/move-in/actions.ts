@@ -23,17 +23,10 @@ export async function getTenantPendingTenancy() {
           name,
           address
         )
-      ),
-      move_out_intentions!tenancy_id(
-        id,
-        key_area_photos,
-        damage_photos,
-        notes,
-        planned_move_out_date
       )
     `)
     .eq('tenant_user_id', user.id)
-    .in('status', ['PENDING', 'OCCUPIED'])
+    .in('status', ['PENDING', 'OCCUPIED', 'MOVE_IN_PENDING_SIGNATURE'])
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -43,6 +36,44 @@ export async function getTenantPendingTenancy() {
   }
 
   return { data, error: null };
+}
+
+export async function getPreviousTenantMoveOutPhotos(roomId: string) {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { data: null, error: 'Not authenticated' };
+  }
+
+  // Get the most recent ENDED tenancy for this room with move-out photos
+  const { data: previousTenancy, error: tenancyError } = await supabase
+    .from('tenancies')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('status', 'ENDED')
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (tenancyError || !previousTenancy) {
+    console.log('No previous tenancy found for room', roomId);
+    return { data: null, error: null }; // No error, just no previous data
+  }
+
+  // Get the move-out intention for the previous tenancy
+  const { data: moveOutData, error: moveOutError } = await supabase
+    .from('move_out_intentions')
+    .select('id, key_area_photos, damage_photos, notes, damage_description')
+    .eq('tenancy_id', previousTenancy.id)
+    .maybeSingle();
+
+  if (moveOutError) {
+    console.error('Error fetching previous move-out data:', moveOutError);
+    return { data: null, error: null }; // Don't fail, just return no data
+  }
+
+  return { data: moveOutData, error: null };
 }
 
 export async function confirmKeysReceived(tenancyId: string) {

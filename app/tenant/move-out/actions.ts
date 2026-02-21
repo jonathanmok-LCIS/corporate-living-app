@@ -29,7 +29,9 @@ export async function getTenantActiveTenancy() {
         )
       `)
       .eq('tenant_user_id', user.id)
-      .eq('status', 'OCCUPIED')
+      .in('status', ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle(); // Use maybeSingle instead of single to avoid error on no results
 
     if (error) {

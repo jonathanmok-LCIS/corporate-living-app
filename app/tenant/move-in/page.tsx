@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { getTenantPendingTenancy, confirmKeysReceived } from './actions';
+import { getTenantPendingTenancy, confirmKeysReceived, getPreviousTenantMoveOutPhotos } from './actions';
 
 interface TenancyData {
   id: string;
@@ -16,13 +16,14 @@ interface TenancyData {
       address: string;
     };
   };
-  move_out_intentions: Array<{
-    id: string;
-    key_area_photos: string[];
-    damage_photos: string[];
-    notes: string;
-    planned_move_out_date: string;
-  }>;
+}
+
+interface PreviousMoveOutData {
+  id: string;
+  key_area_photos: string[];
+  damage_photos: string[];
+  notes: string;
+  damage_description: string;
 }
 
 export default function MoveInAcknowledgementPage() {
@@ -30,6 +31,7 @@ export default function MoveInAcknowledgementPage() {
   const [signed, setSigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tenancyData, setTenancyData] = useState<TenancyData | null>(null);
+  const [previousMoveOut, setPreviousMoveOut] = useState<PreviousMoveOutData | null>(null);
   const [keysConfirmed, setKeysConfirmed] = useState(false);
 
   useEffect(() => {
@@ -47,6 +49,15 @@ export default function MoveInAcknowledgementPage() {
     }
     
     setTenancyData(result.data as any);
+    
+    // Fetch previous tenant's move-out photos for this room
+    if (result.data.room?.id) {
+      const photosResult = await getPreviousTenantMoveOutPhotos(result.data.room.id);
+      if (photosResult.data) {
+        setPreviousMoveOut(photosResult.data as any);
+      }
+    }
+    
     setLoading(false);
   }
 
@@ -114,7 +125,6 @@ export default function MoveInAcknowledgementPage() {
   }
 
   // Get previous tenant's move-out photos if available
-  const previousMoveOut = tenancyData?.move_out_intentions?.[0];
   const keyAreaPhotos = previousMoveOut?.key_area_photos || [];
   const damagePhotos = previousMoveOut?.damage_photos || [];
 

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { House, Profile, HouseCoordinator } from '@/lib/types';
 
+import { assignCoordinator, removeCoordinator } from './actions';
+
 export default function HouseCoordinatorsPage() {
   const params = useParams();
   const router = useRouter();
@@ -80,17 +82,14 @@ export default function HouseCoordinatorsPage() {
   }
 
   async function handleAssignCoordinator() {
-    if (!selectedCoordinator || !supabase) return;
+    if (!selectedCoordinator) return;
 
     try {
-      const { error } = await supabase
-        .from('house_coordinators')
-        .insert([{
-          house_id: houseId,
-          user_id: selectedCoordinator,
-        }]);
-
-      if (error) throw error;
+      const result = await assignCoordinator(houseId, selectedCoordinator);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       setSelectedCoordinator('');
       fetchCoordinators();
@@ -100,25 +99,24 @@ export default function HouseCoordinatorsPage() {
       alert(error?.message || 'Error assigning coordinator');
     }
   }
+    }
+  }
 
   async function handleRemoveCoordinator(coordinatorId: string) {
     if (!confirm('Are you sure you want to remove this coordinator?')) return;
-    
-    if (!supabase) return;
 
     try {
-      const { error } = await supabase
-        .from('house_coordinators')
-        .delete()
-        .eq('id', coordinatorId);
-
-      if (error) throw error;
+      const result = await removeCoordinator(coordinatorId);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       fetchCoordinators();
       alert('Coordinator removed successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing coordinator:', error);
-      alert('Error removing coordinator');
+      alert(error?.message || 'Error removing coordinator');
     }
   }
 
