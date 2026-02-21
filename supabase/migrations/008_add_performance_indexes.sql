@@ -3,8 +3,7 @@
 
 -- Tenancies by status (frequently filtered in admin and coordinator views)
 CREATE INDEX IF NOT EXISTS idx_tenancies_status 
-ON tenancies(status) 
-WHERE status != 'CANCELLED';
+ON tenancies(status);
 
 -- Tenancies by tenant (user's own data lookups)
 CREATE INDEX IF NOT EXISTS idx_tenancies_tenant_user 
@@ -31,7 +30,7 @@ ON house_coordinators(house_id);
 -- Composite index for finding active tenancies in a house
 CREATE INDEX IF NOT EXISTS idx_tenancies_room_status 
 ON tenancies(room_id, status) 
-WHERE status IN ('PENDING', 'OCCUPIED', 'MOVE_OUT_INTENDED');
+WHERE status IN ('OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE');
 
 -- Add comments explaining the indexes
 COMMENT ON INDEX idx_tenancies_status IS 'Improves filtering tenancies by status';
