@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { Tenancy, Room, House, Profile } from '@/lib/types';
-import { createTenancy, fetchTenanciesAdmin } from './actions';
+import { createTenancy, fetchTenanciesAdmin, endTenancy } from './actions';
 
 const isSupabaseConfigured = () => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -158,25 +158,21 @@ export default function TenanciesPage() {
 
   async function handleEndTenancy(tenancyId: string) {
     if (!confirm('Are you sure you want to end this tenancy?')) return;
-    
-    const supabase = createClient();
 
     try {
-      const { error } = await supabase
-        .from('tenancies')
-        .update({
-          status: 'ENDED',
-          end_date: new Date().toISOString().split('T')[0],
-        })
-        .eq('id', tenancyId);
+      const result = await endTenancy(tenancyId);
 
-      if (error) throw error;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      fetchTenancies();
+      // Refresh data
+      router.refresh();
+      await fetchTenancies();
       alert('Tenancy ended successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error ending tenancy:', error);
-      alert('Error ending tenancy');
+      alert(error?.message || 'Error ending tenancy');
     }
   }
 

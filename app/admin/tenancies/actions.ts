@@ -91,3 +91,28 @@ export async function createTenancy(tenancyData: {
     return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }
+
+export async function endTenancy(tenancyId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data, error } = await supabaseAdmin
+      .from('tenancies')
+      .update({
+        status: 'ENDED',
+        end_date: new Date().toISOString().split('T')[0],
+      })
+      .eq('id', tenancyId)
+      .select();
+
+    if (error) {
+      console.error('Error ending tenancy:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in endTenancy:', error);
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+}
