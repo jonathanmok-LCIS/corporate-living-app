@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { getTenantActiveTenancy } from './actions';
+import { getTenantActiveTenancy, uploadMoveOutPhotos } from './actions';
 
 export default function MoveOutIntentionPage() {
   const [loading, setLoading] = useState(false);
@@ -19,26 +19,23 @@ export default function MoveOutIntentionPage() {
   const [keyAreaPhotos, setKeyAreaPhotos] = useState<File[]>([]);
   const [damagePhotos, setDamagePhotos] = useState<File[]>([]);
 
-  async function uploadPhoto(file: File, bucket: string, tenancyId: string): Promise<string | null> {
-    const supabase = createClient();
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${tenancyId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
-
-    if (error) {
-      console.error('Error uploading photo:', error);
-      return null;
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    return publicUrl;
+  // Helper function to convert file to base64
+  async function fileToBase64(file: File): Promise<{ name: string; type: string; base64: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:image/xxx;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve({
+          name: file.name,
+          type: file.type,
+          base64: base64
+        });
+      };
+      reader.onerror = error => reject(error);
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,20 +56,33 @@ export default function MoveOutIntentionPage() {
       
       const tenancy = result.data;
 
-      // 2. Upload photos if any
+      // 2. Upload photos if any using server action
       setUploadingPhotos(true);
-      const keyAreaPhotoUrls: string[] = [];
-      const damagePhotoUrls: string[] = [];
+      let keyAreaPhotoUrls: string[] = [];
+      let damagePhotoUrls: string[] = [];
 
-      for (const photo of keyAreaPhotos) {
-        const url = await uploadPhoto(photo, 'move-out-photos', tenancy.id);
-        if (url) keyAreaPhotoUrls.push(url);
+      if (keyAreaPhotos.length > 0) {
+        const keyAreaFiles = await Promise.all(
+          Array.from(keyAreaPhotos).map(file => fileToBase64(file))
+        );
+        const { urls, error: uploadError } = await uploadMoveOutPhotos(tenancy.id, keyAreaFiles);
+        if (uploadError) {
+          console.error('Error uploading key area photos:', uploadError);
+        }
+        keyAreaPhotoUrls = urls;
       }
 
-      for (const photo of damagePhotos) {
-        const url = await uploadPhoto(photo, 'move-out-photos', tenancy.id);
-        if (url) damagePhotoUrls.push(url);
+      if (damagePhotos.length > 0) {
+        const damageFiles = await Promise.all(
+          Array.from(damagePhotos).map(file => fileToBase64(file))
+        );
+        const { urls, error: uploadError } = await uploadMoveOutPhotos(tenancy.id, damageFiles);
+        if (uploadError) {
+          console.error('Error uploading damage photos:', uploadError);
+        }
+        damagePhotoUrls = urls;
       }
+      
       setUploadingPhotos(false);
 
       // 3. Create move-out intention with photos and all form data

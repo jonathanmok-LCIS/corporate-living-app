@@ -10,6 +10,51 @@ function getAdminClient() {
   return createAdminClient(supabaseUrl, supabaseServiceKey);
 }
 
+export async function uploadMoveOutPhotos(
+  tenancyId: string,
+  files: { name: string; type: string; base64: string }[]
+) {
+  try {
+    const supabaseAdmin = getAdminClient();
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      // Create unique filename with tenancy ID prefix
+      const filename = `${tenancyId}/${Date.now()}-${file.name}`;
+      
+      // Decode base64 to buffer
+      const buffer = Buffer.from(file.base64, 'base64');
+      
+      // Upload to storage
+      const { data, error } = await supabaseAdmin.storage
+        .from('move-out-photos')
+        .upload(filename, buffer, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading file:', filename, error);
+        continue; // Skip this file, continue with others
+      }
+
+      if (data) {
+        // Get public URL
+        const { data: urlData } = supabaseAdmin.storage
+          .from('move-out-photos')
+          .getPublicUrl(filename);
+        
+        uploadedUrls.push(urlData.publicUrl);
+      }
+    }
+
+    return { urls: uploadedUrls, error: null };
+  } catch (error) {
+    console.error('uploadMoveOutPhotos: Exception:', error);
+    return { urls: [], error: error instanceof Error ? error.message : 'Upload failed' };
+  }
+}
+
 export async function getTenantActiveTenancy() {
   try {
     // First, get the authenticated user using server client
