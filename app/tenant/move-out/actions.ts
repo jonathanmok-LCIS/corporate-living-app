@@ -55,6 +55,109 @@ export async function uploadMoveOutPhotos(
   }
 }
 
+export async function submitMoveOutIntention(data: {
+  tenancyId: string;
+  plannedMoveOutDate: string;
+  notes: string | null;
+  keyAreaPhotos: string[];
+  damagePhotos: string[];
+  rentPaidUp: boolean;
+  areasCleaned: boolean;
+  hasDamage: boolean;
+  damageDescription: string | null;
+}) {
+  try {
+    // Get authenticated user
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('submitMoveOutIntention: Auth error:', authError);
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    console.log('=== SUBMIT MOVE-OUT INTENTION ===');
+    console.log('User ID:', user.id);
+    console.log('User Email:', user.email);
+    console.log('Tenancy ID:', data.tenancyId);
+
+    // Verify tenancy belongs to user
+    const { data: tenancyCheck, error: tenancyError } = await supabase
+      .from('tenancies')
+      .select('id, tenant_user_id, status')
+      .eq('id', data.tenancyId)
+      .maybeSingle();
+
+    console.log('Tenancy check:', tenancyCheck);
+    
+    if (tenancyError) {
+      console.error('Tenancy check error:', tenancyError);
+      return { success: false, error: tenancyError.message };
+    }
+
+    if (!tenancyCheck) {
+      console.error('Tenancy not found:', data.tenancyId);
+      return { success: false, error: 'Tenancy not found' };
+    }
+
+    if (tenancyCheck.tenant_user_id !== user.id) {
+      console.error('Tenancy ownership mismatch:', {
+        tenancy_user_id: tenancyCheck.tenant_user_id,
+        auth_user_id: user.id
+      });
+      return { success: false, error: 'You do not own this tenancy' };
+    }
+
+    // Insert move-out intention using server client (has proper auth context)
+    console.log('Inserting move-out intention...');
+    const { data: insertedData, error: insertError } = await supabase
+      .from('move_out_intentions')
+      .insert([{
+        tenancy_id: data.tenancyId,
+        planned_move_out_date: data.plannedMoveOutDate,
+        notes: data.notes,
+        key_area_photos: data.keyAreaPhotos,
+        damage_photos: data.damagePhotos,
+        rent_paid_up: data.rentPaidUp,
+        areas_cleaned: data.areasCleaned,
+        has_damage: data.hasDamage,
+        damage_description: data.damageDescription,
+        sign_off_status: 'PENDING',
+      }])
+      .select();
+
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      return { success: false, error: insertError.message };
+    }
+
+    console.log('Move-out intention inserted:', insertedData);
+
+    // Update tenancy status using server client
+    console.log('Updating tenancy status...');
+    const { error: updateError } = await supabase
+      .from('tenancies')
+      .update({ status: 'MOVE_OUT_INTENDED' })
+      .eq('id', data.tenancyId);
+
+    if (updateError) {
+      console.error('Update error:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    console.log('Tenancy status updated to MOVE_OUT_INTENDED');
+    console.log('=== SUBMIT COMPLETE ===');
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('submitMoveOutIntention: Exception:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    };
+  }
+}
+
 export async function getTenantActiveTenancy() {
   try {
     // First, get the authenticated user using server client

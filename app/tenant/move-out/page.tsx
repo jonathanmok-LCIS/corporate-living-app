@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase-browser';
-import { getTenantActiveTenancy, uploadMoveOutPhotos } from './actions';
+import { getTenantActiveTenancy, uploadMoveOutPhotos, submitMoveOutIntention } from './actions';
 
 export default function MoveOutIntentionPage() {
   const [loading, setLoading] = useState(false);
@@ -40,8 +39,6 @@ export default function MoveOutIntentionPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    const supabase = createClient();
     
     setLoading(true);
 
@@ -85,31 +82,22 @@ export default function MoveOutIntentionPage() {
       
       setUploadingPhotos(false);
 
-      // 3. Create move-out intention with photos and all form data
-      const { error: intentionError } = await supabase
-        .from('move_out_intentions')
-        .insert([{
-          tenancy_id: tenancy.id,
-          planned_move_out_date: formData.plannedMoveOutDate,
-          notes: formData.notes || null,
-          key_area_photos: keyAreaPhotoUrls,
-          damage_photos: damagePhotoUrls,
-          rent_paid_up: formData.rentPaidUp === 'yes',
-          areas_cleaned: formData.areasCleaned === 'yes',
-          has_damage: formData.hasDamage === 'yes',
-          damage_description: formData.hasDamage === 'yes' ? formData.damageDescription : null,
-          sign_off_status: 'PENDING',
-        }]);
+      // 3. Submit move-out intention using server action (proper auth context for RLS)
+      const submitResult = await submitMoveOutIntention({
+        tenancyId: tenancy.id,
+        plannedMoveOutDate: formData.plannedMoveOutDate,
+        notes: formData.notes || null,
+        keyAreaPhotos: keyAreaPhotoUrls,
+        damagePhotos: damagePhotoUrls,
+        rentPaidUp: formData.rentPaidUp === 'yes',
+        areasCleaned: formData.areasCleaned === 'yes',
+        hasDamage: formData.hasDamage === 'yes',
+        damageDescription: formData.hasDamage === 'yes' ? formData.damageDescription : null,
+      });
 
-      if (intentionError) throw intentionError;
-
-      // 4. Update tenancy status
-      const { error: updateError } = await supabase
-        .from('tenancies')
-        .update({ status: 'MOVE_OUT_INTENDED' })
-        .eq('id', tenancy.id);
-
-      if (updateError) throw updateError;
+      if (!submitResult.success) {
+        throw new Error(submitResult.error || 'Failed to submit move-out intention');
+      }
 
       // Success!
       setSubmitted(true);
