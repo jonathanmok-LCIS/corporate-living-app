@@ -7,6 +7,7 @@ import { getTenantActiveTenancy } from './move-out/actions';
 export default function TenantDashboard() {
   const [tenancy, setTenancy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTenancy();
@@ -14,13 +15,26 @@ export default function TenantDashboard() {
 
   async function fetchTenancy() {
     try {
+      console.log('Dashboard: Fetching tenancy...');
       const result = await getTenantActiveTenancy();
       
-      if (!result.error && result.data) {
+      console.log('Dashboard: Result:', result);
+      
+      if (result.error) {
+        console.error('Dashboard: Error from server:', result.error);
+        setError(result.error);
+      } else if (result.data) {
+        console.log('Dashboard: Tenancy data received:', result.data);
         setTenancy(result.data);
+        setError(null);
+      } else {
+        console.log('Dashboard: No tenancy data found (not an error)');
+        setTenancy(null);
+        setError(null);
       }
     } catch (error) {
-      console.error('Error fetching tenancy:', error);
+      console.error('Dashboard: Exception:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -52,6 +66,17 @@ export default function TenantDashboard() {
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">Current Tenancy</h2>
         {loading ? (
           <p className="text-gray-500">Loading...</p>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800 font-medium">Error loading tenancy</p>
+            <p className="text-red-600 text-sm mt-1">{error}</p>
+            <button 
+              onClick={fetchTenancy}
+              className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
         ) : tenancy ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
@@ -86,7 +111,12 @@ export default function TenantDashboard() {
             </div>
           </div>
         ) : (
-          <p className="text-gray-500">No active tenancy found.</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 font-medium">No active tenancy found</p>
+            <p className="text-blue-600 text-sm mt-1">
+              You don't have an active tenancy at the moment. Please contact your administrator if you believe this is an error.
+            </p>
+          </div>
         )}
       </div>
     </div>
