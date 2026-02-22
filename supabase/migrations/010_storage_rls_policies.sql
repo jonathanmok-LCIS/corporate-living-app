@@ -16,11 +16,6 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('move-out-photos', 'move-out-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
--- ============================================================================
--- STEP 2: Enable RLS on storage.objects (should already be enabled)
--- ============================================================================
--- This is typically already enabled by default, but we include it for safety
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- STEP 3: Create RLS Policies for move-out-photos bucket
