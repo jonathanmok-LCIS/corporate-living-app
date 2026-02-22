@@ -194,7 +194,6 @@ export default function MoveOutIntentionPage() {
   async function uploadPhotosToStorage(files: File[]): Promise<string[]> {
     const supabase = createClient();
     
-    // Get authenticated user - required for RLS policy
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -202,26 +201,20 @@ export default function MoveOutIntentionPage() {
     }
     
     const userId = user.id;
-    const uploadedUrls: string[] = [];
+    const uploadedPaths: string[] = [];
 
     for (const file of files) {
-      // Create unique filename with timestamp and random string
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 15);
       
-      // Sanitize filename: remove spaces and special characters
-      // Keep only alphanumeric, dots, and hyphens
       const safeName = file.name
-        .replace(/\s+/g, '-')           // Replace spaces with hyphens
-        .replace(/[^a-zA-Z0-9.-]/g, '') // Remove special characters
-        .toLowerCase();                  // Convert to lowercase
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9.-]/g, '')
+        .toLowerCase();
       
-      // Upload to user-scoped folder: {userId}/{timestamp}-{random}-{filename}
-      // This matches the RLS policy requirement: folder[1] = auth.uid()
       const filePath = `${userId}/${timestamp}-${randomStr}-${safeName}`;
       
-      // Upload directly to storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('move-out-photos')
         .upload(filePath, file, {
           contentType: file.type,
@@ -229,23 +222,13 @@ export default function MoveOutIntentionPage() {
         });
 
       if (error) {
-        console.error('Error uploading file:', filePath, error);
         throw new Error(`Failed to upload ${file.name}: ${error.message}`);
       }
 
-      if (data) {
-        // Get public URL for the uploaded file
-        const { data: urlData } = supabase.storage
-          .from('move-out-photos')
-          .getPublicUrl(filePath);
-        
-        uploadedUrls.push(urlData.publicUrl);
-        
-        console.log(`Uploaded to: ${filePath}`);
-      }
+      uploadedPaths.push(filePath);
     }
 
-    return uploadedUrls;
+    return uploadedPaths;
   }
 
   if (submitted) {
