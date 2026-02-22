@@ -45,10 +45,11 @@ export async function POST(request: NextRequest) {
       type,
     });
 
-  } catch (error: any) {
-    console.error('Error sending notification:', error);
+  } catch (err) {
+    console.error('Error sending notification:', err);
+    const message = err instanceof Error ? err.message : 'Failed to send notification';
     return NextResponse.json(
-      { error: error?.message || 'Failed to send notification' },
+      { error: message },
       { status: 500 }
     );
   }

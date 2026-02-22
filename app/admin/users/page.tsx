@@ -51,8 +51,8 @@ export default function UsersPage() {
 
       if (error) throw error;
       setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+    } catch (err) {
+      console.error('Error fetching users:', err);
       setError('Error loading users. Please try again.');
     } finally {
       setLoading(false);
@@ -91,9 +91,9 @@ export default function UsersPage() {
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      setError(error instanceof Error ? error.message : 'Error creating user. Please try again.');
+    } catch (err) {
+      console.error('Error creating user:', err);
+      setError(err instanceof Error ? err.message : 'Error creating user. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -269,24 +269,47 @@ export default function UsersPage() {
                 </td>
               </tr>
             ) : (
-              users.map((user: any) => {
+              users.map((user) => {
+                interface HouseCoordinator {
+                  house?: {
+                    name: string;
+                  };
+                }
+
+                interface TenancyWithRoom {
+                  status: string;
+                  room?: {
+                    label: string;
+                    house?: {
+                      name: string;
+                    };
+                  };
+                }
+
+                interface UserWithRelations extends Profile {
+                  house_coordinators?: HouseCoordinator[];
+                  tenancies?: TenancyWithRoom[];
+                }
+
+                const userWithRelations = user as UserWithRelations;
+
                 // Get house assignments based on role
                 let houseAssignments: string[] = [];
                 
-                if (user.role === 'COORDINATOR' && user.house_coordinators) {
-                  houseAssignments = user.house_coordinators
-                    .map((hc: any) => hc.house?.name)
-                    .filter(Boolean);
-                } else if ((user.role === 'TENANT' || user.role === 'COORDINATOR') && user.tenancies) {
+                if (userWithRelations.role === 'COORDINATOR' && userWithRelations.house_coordinators) {
+                  houseAssignments = userWithRelations.house_coordinators
+                    .map((hc) => hc.house?.name)
+                    .filter((name): name is string => name !== undefined);
+                } else if ((userWithRelations.role === 'TENANT' || userWithRelations.role === 'COORDINATOR') && userWithRelations.tenancies) {
                   // Get active tenancies only
-                  const activeTenancies = user.tenancies.filter((t: any) => t.status === 'OCCUPIED');
+                  const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'OCCUPIED');
                   houseAssignments = activeTenancies
-                    .map((t: any) => {
+                    .map((t) => {
                       const houseName = t.room?.house?.name;
                       const roomLabel = t.room?.label;
                       return houseName && roomLabel ? `${houseName} - ${roomLabel}` : null;
                     })
-                    .filter(Boolean);
+                    .filter((name): name is string => name !== null);
                 }
 
                 return (

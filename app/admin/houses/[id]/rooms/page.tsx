@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { House, Room } from '@/lib/types';
@@ -10,13 +10,28 @@ const isSupabaseConfigured = () => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 };
 
+interface RoomWithTenancies extends Room {
+  tenancies?: Array<{
+    id: string;
+    status: string;
+    start_date: string;
+    end_date?: string;
+    rental_price?: string;
+    slot?: string;
+    tenant?: {
+      name: string;
+      email: string;
+    };
+  }>;
+}
+
 export default function RoomsPage() {
   const params = useParams();
   const router = useRouter();
   const houseId = params.id as string;
   
   const [house, setHouse] = useState<House | null>(null);
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<RoomWithTenancies[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,16 +40,7 @@ export default function RoomsPage() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isSupabaseConfigured()) {
-      fetchHouse();
-      fetchRooms();
-    } else {
-      setLoading(false);
-    }
-  }, [houseId]);
-
-  async function fetchHouse() {
+  const fetchHouse = useCallback(async () => {
     const supabase = createClient();
     
     try {
@@ -46,15 +52,14 @@ export default function RoomsPage() {
 
       if (error) throw error;
       setHouse(data);
-    } catch (error) {
-      console.error('Error fetching house:', error);
+    } catch (err) {
+      console.error('Error fetching house:', err);
       router.push('/admin/houses');
     }
-  }
+  }, [houseId, router]);
 
-  async function fetchRooms() {
+  const fetchRooms = useCallback(async () => {
     try {
-      // Use server action with admin client for reliable tenant data
       const result = await fetchRoomsWithTenancies(houseId);
       
       if (result.error) {
@@ -63,12 +68,21 @@ export default function RoomsPage() {
       }
       
       setRooms(result.data || []);
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [houseId]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      fetchHouse();
+      fetchRooms();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchHouse, fetchRooms]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,9 +114,10 @@ export default function RoomsPage() {
       setEditingId(null);
       setShowForm(false);
       fetchRooms();
-    } catch (error: any) {
-      console.error('Error saving room:', error);
-      alert(error?.message || 'Error saving room. Please try again.');
+    } catch (err) {
+      console.error('Error saving room:', err);
+      const message = err instanceof Error ? err.message : 'Error saving room. Please try again.';
+      alert(message);
     }
   }
 
@@ -117,8 +132,8 @@ export default function RoomsPage() {
 
       if (error) throw error;
       fetchRooms();
-    } catch (error) {
-      console.error('Error updating room:', error);
+    } catch (err) {
+      console.error('Error updating room:', err);
     }
   }
 
@@ -266,7 +281,7 @@ export default function RoomsPage() {
                 </td>
               </tr>
             ) : (
-              rooms.map((room: any) => {
+              rooms.map((room) => {
                 const activeTenancy = room.tenancies?.[0];
                 return (
                   <tr key={room.id}>

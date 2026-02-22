@@ -39,9 +39,9 @@ export async function fetchTenanciesAdmin() {
     }
 
     return { data, error: null };
-  } catch (error) {
-    console.error('Error in fetchTenanciesAdmin:', error);
-    return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  } catch (err) {
+    console.error('Error in fetchTenanciesAdmin:', err);
+    return { data: null, error: err instanceof Error ? err.message : 'Unknown error occurred' };
   }
 }
 
@@ -57,7 +57,17 @@ export async function createTenancy(tenancyData: {
     // Create admin client with service role key to bypass RLS
     const supabaseAdmin = getAdminClient();
 
-    const insertData: any = {
+    interface InsertData {
+      room_id: string;
+      tenant_user_id: string;
+      start_date: string;
+      status: string;
+      slot?: 'A' | 'B';
+      end_date?: string;
+      rental_price?: number;
+    }
+
+    const insertData: InsertData = {
       room_id: tenancyData.room_id,
       tenant_user_id: tenancyData.tenant_user_id,
       start_date: tenancyData.start_date,
@@ -86,9 +96,9 @@ export async function createTenancy(tenancyData: {
     }
 
     return { data, error: null };
-  } catch (error) {
-    console.error('Error in createTenancy:', error);
-    return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  } catch (err) {
+    console.error('Error in createTenancy:', err);
+    return { error: err instanceof Error ? err.message : 'Unknown error occurred' };
   }
 }
 
@@ -111,8 +121,8 @@ export async function endTenancy(tenancyId: string) {
     }
 
     return { data, error: null };
-  } catch (error) {
-    console.error('Error in endTenancy:', error);
-    return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  } catch (err) {
+    console.error('Error in endTenancy:', err);
+    return { data: null, error: err instanceof Error ? err.message : 'Unknown error occurred' };
   }
 }

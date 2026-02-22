@@ -34,9 +34,10 @@ export async function fetchHousesAdmin() {
     }
 
     return { data: houses || [], error: null };
-  } catch (error: any) {
-    console.error('Unexpected error in fetchHousesAdmin:', error);
-    return { data: null, error: error.message };
+  } catch (err) {
+    console.error('Unexpected error in fetchHousesAdmin:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
   }
 }
 
@@ -60,9 +61,10 @@ export async function createHouse(houseData: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Unexpected error in createHouse:', error);
-    return { data: null, error: error.message };
+  } catch (err) {
+    console.error('Unexpected error in createHouse:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
   }
 }
 
@@ -87,9 +89,10 @@ export async function updateHouse(id: string, houseData: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
-    console.error('Unexpected error in updateHouse:', error);
-    return { data: null, error: error.message };
+  } catch (err) {
+    console.error('Unexpected error in updateHouse:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
   }
 }
 
@@ -108,8 +111,9 @@ export async function deleteHouse(id: string) {
     }
 
     return { error: null };
-  } catch (error: any) {
-    console.error('Unexpected error in deleteHouse:', error);
-    return { error: error.message };
+  } catch (err) {
+    console.error('Unexpected error in deleteHouse:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { error: message };
   }
 }

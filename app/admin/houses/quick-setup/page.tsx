@@ -40,7 +40,7 @@ export default function QuickSetupPage() {
     }
   }
 
-  function updateRoom(tempId: string, field: keyof Omit<RoomFormData, 'tempId'>, value: any) {
+  function updateRoom(tempId: string, field: keyof Omit<RoomFormData, 'tempId'>, value: string | number) {
     setRooms(rooms.map(r => 
       r.tempId === tempId ? { ...r, [field]: value } : r
     ));
@@ -93,9 +93,10 @@ export default function QuickSetupPage() {
       // Success!
       alert(`Successfully created "${house.name}" with ${roomsToInsert.length} room(s)!`);
       router.push(`/admin/houses/${house.id}/rooms`);
-    } catch (error: any) {
-      console.error('Error in quick setup:', error);
-      alert(error?.message || 'Error creating house and rooms. Please try again.');
+    } catch (err) {
+      console.error('Error in quick setup:', err);
+      const message = err instanceof Error ? err.message : 'Error creating house and rooms. Please try again.';
+      alert(message);
     } finally {
       setLoading(false);
     }
@@ -317,7 +318,7 @@ export default function QuickSetupPage() {
                   Rooms ({rooms.filter(r => r.label.trim() !== '').length})
                 </h3>
                 <div className="space-y-2">
-                  {rooms.filter(r => r.label.trim() !== '').map((room, index) => (
+                  {rooms.filter(r => r.label.trim() !== '').map((room) => (
                     <div key={room.tempId} className="bg-gray-50 p-3 rounded flex justify-between items-center">
                       <div>
                         <span className="font-medium">{room.label}</span>

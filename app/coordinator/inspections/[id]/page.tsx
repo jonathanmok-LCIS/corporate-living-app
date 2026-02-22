@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { Inspection, InspectionChecklistItem, Tenancy, Room } from '@/lib/types';
+import { Inspection, Tenancy, Room } from '@/lib/types';
 import { CHECKLIST_ITEMS } from '@/lib/types';
 
 export default function InspectionDetailPage() {
@@ -18,15 +18,7 @@ export default function InspectionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (isSupabaseConfigured()) {
-      fetchInspection();
-    } else {
-      setLoading(false);
-    }
-  }, [inspectionId]);
-
-  async function fetchInspection() {
+  const fetchInspection = useCallback(async () => {
     if (!supabase) return;
     
     try {
@@ -79,14 +71,22 @@ export default function InspectionDetailPage() {
       });
       setChecklistItems(itemsMap);
 
-    } catch (error) {
-      console.error('Error fetching inspection:', error);
+    } catch (err) {
+      console.error('Error fetching inspection:', err);
       alert('Error loading inspection');
       router.push('/coordinator/inspections');
     } finally {
       setLoading(false);
     }
-  }
+  }, [inspectionId, router]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      fetchInspection();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchInspection]);
 
   async function handleSave() {
     if (!inspection || !supabase) return;

@@ -119,8 +119,9 @@ export async function fetchRoomsWithTenancies(houseId: string) {
 
     return { data: roomsWithTenancies, error: null };
 
-  } catch (error: any) {
-    console.error('Unexpected error in fetchRoomsWithTenancies:', error);
-    return { data: null, error: error.message };
+  } catch (err) {
+    console.error('Unexpected error in fetchRoomsWithTenancies:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
   }
 }

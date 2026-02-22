@@ -3,12 +3,47 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { Inspection } from '@/lib/types';
+
+interface InspectionWithRelations {
+  id: string;
+  status: string;
+  created_at: string;
+  room?: {
+    id: string;
+    label: string;
+  };
+  tenancy?: {
+    id: string;
+    tenant?: {
+      name: string;
+      email: string;
+    };
+  };
+}
+
+interface MoveOutIntentionWithRelations {
+  id: string;
+  tenancy_id: string;
+  planned_move_out_date: string;
+  notes?: string;
+  tenancy?: {
+    id: string;
+    status: string;
+    room?: {
+      id: string;
+      label: string;
+    };
+    tenant?: {
+      name: string;
+      email: string;
+    };
+  };
+}
 
 export default function InspectionsPage() {
   const router = useRouter();
-  const [inspections, setInspections] = useState<any[]>([]);
-  const [pendingIntentions, setPendingIntentions] = useState<any[]>([]);
+  const [inspections, setInspections] = useState<InspectionWithRelations[]>([]);
+  const [pendingIntentions, setPendingIntentions] = useState<MoveOutIntentionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,8 +70,8 @@ export default function InspectionsPage() {
 
       if (error) throw error;
       setInspections(data || []);
-    } catch (error) {
-      console.error('Error fetching inspections:', error);
+    } catch (err) {
+      console.error('Error fetching inspections:', err);
     } finally {
       setLoading(false);
     }
@@ -61,8 +96,8 @@ export default function InspectionsPage() {
 
       if (error) throw error;
       setPendingIntentions(data || []);
-    } catch (error) {
-      console.error('Error fetching pending intentions:', error);
+    } catch (err) {
+      console.error('Error fetching pending intentions:', err);
     }
   }
 
@@ -97,9 +132,10 @@ export default function InspectionsPage() {
 
       alert('Inspection created successfully');
       router.push(`/coordinator/inspections/${data.id}`);
-    } catch (error: any) {
-      console.error('Error creating inspection:', error);
-      alert(error?.message || 'Error creating inspection');
+    } catch (err) {
+      console.error('Error creating inspection:', err);
+      const message = err instanceof Error ? err.message : 'Error creating inspection';
+      alert(message);
     }
   }
 
@@ -154,14 +190,18 @@ export default function InspectionsPage() {
                     )}
                   </div>
                   <button
-                    onClick={() =>
-                      handleCreateInspection(
-                        intention.id,
-                        intention.tenancy_id,
-                        intention.tenancy?.room?.id
-                      )
-                    }
+                    onClick={() => {
+                      const roomId = intention.tenancy?.room?.id;
+                      if (roomId) {
+                        handleCreateInspection(
+                          intention.id,
+                          intention.tenancy_id,
+                          roomId
+                        );
+                      }
+                    }}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    disabled={!intention.tenancy?.room?.id}
                   >
                     Create Inspection
                   </button>

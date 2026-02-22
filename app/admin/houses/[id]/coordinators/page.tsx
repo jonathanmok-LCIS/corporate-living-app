@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { House, Profile, HouseCoordinator } from '@/lib/types';
 
 import { assignCoordinator, removeCoordinator } from './actions';
+
+interface CoordinatorWithProfile extends HouseCoordinator {
+  profile: Profile;
+}
 
 export default function HouseCoordinatorsPage() {
   const params = useParams();
@@ -13,22 +17,12 @@ export default function HouseCoordinatorsPage() {
   const houseId = params.id as string;
   
   const [house, setHouse] = useState<House | null>(null);
-  const [coordinators, setCoordinators] = useState<(HouseCoordinator & { profile: Profile })[]>([]);
+  const [coordinators, setCoordinators] = useState<CoordinatorWithProfile[]>([]);
   const [availableCoordinators, setAvailableCoordinators] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCoordinator, setSelectedCoordinator] = useState('');
 
-  useEffect(() => {
-    if (isSupabaseConfigured()) {
-      fetchHouse();
-      fetchCoordinators();
-      fetchAvailableCoordinators();
-    } else {
-      setLoading(false);
-    }
-  }, [houseId]);
-
-  async function fetchHouse() {
+  const fetchHouse = useCallback(async () => {
     if (!supabase) return;
     
     try {
@@ -40,13 +34,13 @@ export default function HouseCoordinatorsPage() {
 
       if (error) throw error;
       setHouse(data);
-    } catch (error) {
-      console.error('Error fetching house:', error);
+    } catch (err) {
+      console.error('Error fetching house:', err);
       router.push('/admin/houses');
     }
-  }
+  }, [houseId, router]);
 
-  async function fetchCoordinators() {
+  const fetchCoordinators = useCallback(async () => {
     if (!supabase) return;
     
     try {
@@ -56,13 +50,23 @@ export default function HouseCoordinatorsPage() {
         .eq('house_id', houseId);
 
       if (error) throw error;
-      setCoordinators(data as any || []);
-    } catch (error) {
-      console.error('Error fetching coordinators:', error);
+      setCoordinators(data as CoordinatorWithProfile[] || []);
+    } catch (err) {
+      console.error('Error fetching coordinators:', err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [houseId]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      fetchHouse();
+      fetchCoordinators();
+      fetchAvailableCoordinators();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchHouse, fetchCoordinators]);
 
   async function fetchAvailableCoordinators() {
     if (!supabase) return;
@@ -76,8 +80,8 @@ export default function HouseCoordinatorsPage() {
 
       if (error) throw error;
       setAvailableCoordinators(data || []);
-    } catch (error) {
-      console.error('Error fetching available coordinators:', error);
+    } catch (err) {
+      console.error('Error fetching available coordinators:', err);
     }
   }
 
@@ -94,9 +98,10 @@ export default function HouseCoordinatorsPage() {
       setSelectedCoordinator('');
       fetchCoordinators();
       alert('Coordinator assigned successfully');
-    } catch (error: any) {
-      console.error('Error assigning coordinator:', error);
-      alert(error?.message || 'Error assigning coordinator');
+    } catch (err) {
+      console.error('Error assigning coordinator:', err);
+      const message = err instanceof Error ? err.message : 'Error assigning coordinator';
+      alert(message);
     }
   }
 
@@ -112,9 +117,10 @@ export default function HouseCoordinatorsPage() {
 
       fetchCoordinators();
       alert('Coordinator removed successfully');
-    } catch (error: any) {
-      console.error('Error removing coordinator:', error);
-      alert(error?.message || 'Error removing coordinator');
+    } catch (err) {
+      console.error('Error removing coordinator:', err);
+      const message = err instanceof Error ? err.message : 'Error removing coordinator';
+      alert(message);
     }
   }
 
@@ -206,17 +212,17 @@ export default function HouseCoordinatorsPage() {
                 <tr key={coordinator.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {(coordinator.profile as any)?.name}
+                      {coordinator.profile?.name}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">
-                      {(coordinator.profile as any)?.email}
+                      {coordinator.profile?.email}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {(coordinator.profile as any)?.role}
+                      {coordinator.profile?.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

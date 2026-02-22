@@ -3,16 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { Tenancy, Room, House, Profile } from '@/lib/types';
+import { Room, House, Profile, Tenancy } from '@/lib/types';
 import { createTenancy, fetchTenanciesAdmin, endTenancy } from './actions';
 
 const isSupabaseConfigured = () => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 };
 
+interface TenancyWithRelations extends Tenancy {
+  room?: {
+    id: string;
+    label: string;
+  };
+  tenant?: {
+    name: string;
+    email: string;
+  };
+}
+
 export default function TenanciesPage() {
   const router = useRouter();
-  const [tenancies, setTenancies] = useState<any[]>([]);
+  const [tenancies, setTenancies] = useState<TenancyWithRelations[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
   const [tenants, setTenants] = useState<Profile[]>([]);
@@ -47,8 +58,8 @@ export default function TenanciesPage() {
       } else {
         setTenancies(result.data || []);
       }
-    } catch (error) {
-      console.error('Error fetching tenancies:', error);
+    } catch (err) {
+      console.error('Error fetching tenancies:', err);
     } finally {
       setLoading(false);
     }
@@ -66,8 +77,8 @@ export default function TenanciesPage() {
 
       if (error) throw error;
       setRooms(data || []);
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
     }
   }
 
@@ -83,8 +94,8 @@ export default function TenanciesPage() {
 
       if (error) throw error;
       setHouses(data || []);
-    } catch (error) {
-      console.error('Error fetching houses:', error);
+    } catch (err) {
+      console.error('Error fetching houses:', err);
     }
   }
 
@@ -100,8 +111,8 @@ export default function TenanciesPage() {
 
       if (error) throw error;
       setTenants(data || []);
-    } catch (error) {
-      console.error('Error fetching tenants:', error);
+    } catch (err) {
+      console.error('Error fetching tenants:', err);
     }
   }
 
@@ -109,7 +120,16 @@ export default function TenanciesPage() {
     e.preventDefault();
     
     try {
-      const tenancyData: any = {
+      interface TenancyData {
+        room_id: string;
+        tenant_user_id: string;
+        start_date: string;
+        slot?: 'A' | 'B';
+        end_date?: string;
+        rental_price?: number;
+      }
+
+      const tenancyData: TenancyData = {
         room_id: formData.room_id,
         tenant_user_id: formData.tenant_user_id,
         start_date: formData.start_date,
@@ -150,9 +170,10 @@ export default function TenanciesPage() {
       await fetchTenancies();
       
       alert('Tenancy created successfully');
-    } catch (error: any) {
-      console.error('Error creating tenancy:', error);
-      alert(error?.message || 'Error creating tenancy');
+    } catch (err) {
+      console.error('Error creating tenancy:', err);
+      const message = err instanceof Error ? err.message : 'Error creating tenancy';
+      alert(message);
     }
   }
 
@@ -170,9 +191,10 @@ export default function TenanciesPage() {
       router.refresh();
       await fetchTenancies();
       alert('Tenancy ended successfully');
-    } catch (error: any) {
-      console.error('Error ending tenancy:', error);
-      alert(error?.message || 'Error ending tenancy');
+    } catch (err) {
+      console.error('Error ending tenancy:', err);
+      const message = err instanceof Error ? err.message : 'Error ending tenancy';
+      alert(message);
     }
   }
 
