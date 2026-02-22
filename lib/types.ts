@@ -122,3 +122,23 @@ export const CHECKLIST_ITEMS = [
 ] as const;
 
 export type ChecklistKey = typeof CHECKLIST_ITEMS[number]['key'];
+
+// Form event types
+export type FormEvent = React.FormEvent<HTMLFormElement>;
+export type ChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
+export type MouseEvent = React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>;
+
+// Error types
+export interface SupabaseError {
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}
+
+// API Response types
+export interface ApiResponse<T = unknown> {
+  data?: T;
+  error?: string | SupabaseError;
+  success?: boolean;
+}

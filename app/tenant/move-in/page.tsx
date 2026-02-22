@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import SignatureCanvas from 'react-signature-canvas';
 import { getTenantPendingTenancy, confirmKeysReceived, getPreviousTenantMoveOutPhotos } from './actions';
 
@@ -34,11 +35,7 @@ export default function MoveInAcknowledgementPage() {
   const [previousMoveOut, setPreviousMoveOut] = useState<PreviousMoveOutData | null>(null);
   const [keysConfirmed, setKeysConfirmed] = useState(false);
 
-  useEffect(() => {
-    loadTenancyData();
-  }, []);
-
-  async function loadTenancyData() {
+  const loadTenancyData = useCallback(async () => {
     setLoading(true);
     const result = await getTenantPendingTenancy();
     
@@ -48,18 +45,22 @@ export default function MoveInAcknowledgementPage() {
       return;
     }
     
-    setTenancyData(result.data as any);
+    setTenancyData(result.data as TenancyData);
     
     // Fetch previous tenant's move-out photos for this room
     if (result.data.room?.id) {
       const photosResult = await getPreviousTenantMoveOutPhotos(result.data.room.id);
       if (photosResult.data) {
-        setPreviousMoveOut(photosResult.data as any);
+        setPreviousMoveOut(photosResult.data as PreviousMoveOutData);
       }
     }
     
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    loadTenancyData();
+  }, [loadTenancyData]);
 
   function handleClear() {
     sigCanvas.current?.clear();
@@ -80,8 +81,6 @@ export default function MoveInAcknowledgementPage() {
       alert('No tenancy data found');
       return;
     }
-
-    const signatureDataUrl = sigCanvas.current.toDataURL();
     
     // Confirm keys received
     const result = await confirmKeysReceived(tenancyData.id);
@@ -178,9 +177,11 @@ export default function MoveInAcknowledgementPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {keyAreaPhotos.map((photoUrl, index) => (
               <div key={index} className="relative group">
-                <img
+                <Image
                   src={photoUrl}
                   alt={`General condition photo ${index + 1}`}
+                  width={400}
+                  height={300}
                   className="w-full h-48 object-cover rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => window.open(photoUrl, '_blank')}
                 />
@@ -213,9 +214,11 @@ export default function MoveInAcknowledgementPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {damagePhotos.map((photoUrl, index) => (
               <div key={index} className="relative group">
-                <img
+                <Image
                   src={photoUrl}
                   alt={`Damage photo ${index + 1}`}
+                  width={400}
+                  height={300}
                   className="w-full h-48 object-cover rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => window.open(photoUrl, '_blank')}
                 />
