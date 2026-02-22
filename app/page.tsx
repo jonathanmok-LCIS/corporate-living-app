@@ -66,7 +66,7 @@ export default function Home() {
             </div>
           </div>
           <p className="text-sm text-gray-600 mt-4">
-            After logging in, you'll be automatically directed to your appropriate portal based on your role.
+            After logging in, you&apos;ll be automatically directed to your appropriate portal based on your role.
           </p>
         </div>
       </div>

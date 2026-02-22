@@ -4,8 +4,22 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTenantActiveTenancy } from './move-out/actions';
 
+interface TenancyData {
+  id: string;
+  status: string;
+  start_date: string;
+  end_date?: string;
+  room: {
+    label: string;
+    house: {
+      name: string;
+      address?: string;
+    };
+  };
+}
+
 export default function TenantDashboard() {
-  const [tenancy, setTenancy] = useState<any>(null);
+  const [tenancy, setTenancy] = useState<TenancyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,16 +47,16 @@ export default function TenantDashboard() {
         console.log('Status:', result.data.status);
         console.log('Room:', result.data.room?.label);
         console.log('House:', result.data.room?.house?.name);
-        setTenancy(result.data);
+        setTenancy(result.data as TenancyData);
         setError(null);
       } else {
         console.log('DASHBOARD: No tenancy data (check server logs for reason)');
         setTenancy(null);
         setError(null);
       }
-    } catch (error) {
-      console.error('DASHBOARD EXCEPTION:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
+    } catch (err) {
+      console.error('DASHBOARD EXCEPTION:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
       setTenancy(null);
     } finally {
       setLoading(false);
@@ -123,7 +137,7 @@ export default function TenantDashboard() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-blue-800 font-medium">No active tenancy found</p>
             <p className="text-blue-600 text-sm mt-1">
-              You don't have an active tenancy at the moment. Please contact your administrator if you believe this is an error.
+              You don&apos;t have an active tenancy at the moment. Please contact your administrator if you believe this is an error.
             </p>
           </div>
         )}

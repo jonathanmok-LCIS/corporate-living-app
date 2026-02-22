@@ -1,9 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase-browser';
 
 interface MoveOutIntention {
+  id: string;
+  planned_move_out_date: string;
+  notes: string | null;
+  key_area_photos: string[];
+  damage_photos: string[];
+  sign_off_status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  coordinator_notes: string | null;
+  created_at: string;
+  tenancy: {
+    id: string;
+    tenant: {
+      name: string;
+      email: string;
+    };
+    room: {
+      label: string;
+      house: {
+        name: string;
+      };
+    };
+  };
+}
+
+interface SupabaseMoveOutData {
   id: string;
   planned_move_out_date: string;
   notes: string | null;
@@ -68,7 +93,7 @@ export default function MoveOutReviewsPage() {
       if (error) throw error;
       
       // Transform the data to match our interface
-      const transformedData = (data || []).map((item: any) => ({
+      const transformedData = (data || []).map((item: SupabaseMoveOutData) => ({
         ...item,
         tenancy: {
           id: item.tenancy.id,
@@ -227,9 +252,11 @@ export default function MoveOutReviewsPage() {
                   <div className="grid grid-cols-4 gap-2">
                     {intention.key_area_photos.map((url, index) => (
                       <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                        <img
+                        <Image
                           src={url}
                           alt={`Key area ${index + 1}`}
+                          width={200}
+                          height={150}
                           className="w-full h-24 object-cover rounded border hover:opacity-75"
                         />
                       </a>
@@ -244,9 +271,11 @@ export default function MoveOutReviewsPage() {
                   <div className="grid grid-cols-4 gap-2">
                     {intention.damage_photos.map((url, index) => (
                       <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                        <img
+                        <Image
                           src={url}
                           alt={`Damage ${index + 1}`}
+                          width={200}
+                          height={150}
                           className="w-full h-24 object-cover rounded border hover:opacity-75"
                         />
                       </a>

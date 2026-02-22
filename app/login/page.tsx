@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 
@@ -59,7 +60,8 @@ export default function LoginPage() {
       
       // Force a refresh to update the session
       router.refresh();
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');
     } finally {
@@ -81,9 +83,9 @@ export default function LoginPage() {
             <li>Restart the development server</li>
           </ol>
           <div className="mt-4">
-            <a href="/" className="text-red-600 hover:text-red-800 underline">
+            <Link href="/" className="text-red-600 hover:text-red-800 underline">
               ← Back to Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -147,9 +149,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-sm">
-          <a href="/" className="text-blue-600 hover:text-blue-800">
+          <Link href="/" className="text-blue-600 hover:text-blue-800">
             ← Back to Home
-          </a>
+          </Link>
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-200">
