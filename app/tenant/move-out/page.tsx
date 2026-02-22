@@ -1,12 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { getTenantActiveTenancy, uploadMoveOutPhotos, submitMoveOutIntention } from './actions';
+import { getTenantActiveTenancy, submitMoveOutIntention } from './actions';
+import { compressImage, validateImageFile } from '@/lib/imageCompression';
+import { createClient } from '@/lib/supabase-browser';
+
+const MAX_PHOTOS_PER_SECTION = 10;
 
 export default function MoveOutIntentionPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState('');
   const [formData, setFormData] = useState({
     plannedMoveOutDate: '',
     notes: '',
@@ -17,25 +23,8 @@ export default function MoveOutIntentionPage() {
   });
   const [keyAreaPhotos, setKeyAreaPhotos] = useState<File[]>([]);
   const [damagePhotos, setDamagePhotos] = useState<File[]>([]);
-
-  // Helper function to convert file to base64
-  async function fileToBase64(file: File): Promise<{ name: string; type: string; base64: string }> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove the data:image/xxx;base64, prefix
-        const base64 = result.split(',')[1];
-        resolve({
-          name: file.name,
-          type: file.type,
-          base64: base64
-        });
-      };
-      reader.onerror = error => reject(error);
-    });
-  }
+  const [keyAreaPhotoUrls, setKeyAreaPhotoUrls] = useState<string[]>([]);
+  const [damagePhotoUrls, setDamagePhotoUrls] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,34 +42,8 @@ export default function MoveOutIntentionPage() {
       
       const tenancy = result.data;
 
-      // 2. Upload photos if any using server action
-      setUploadingPhotos(true);
-      let keyAreaPhotoUrls: string[] = [];
-      let damagePhotoUrls: string[] = [];
-
-      if (keyAreaPhotos.length > 0) {
-        const keyAreaFiles = await Promise.all(
-          Array.from(keyAreaPhotos).map(file => fileToBase64(file))
-        );
-        const { urls, error: uploadError } = await uploadMoveOutPhotos(tenancy.id, keyAreaFiles);
-        if (uploadError) {
-          console.error('Error uploading key area photos:', uploadError);
-        }
-        keyAreaPhotoUrls = urls;
-      }
-
-      if (damagePhotos.length > 0) {
-        const damageFiles = await Promise.all(
-          Array.from(damagePhotos).map(file => fileToBase64(file))
-        );
-        const { urls, error: uploadError } = await uploadMoveOutPhotos(tenancy.id, damageFiles);
-        if (uploadError) {
-          console.error('Error uploading damage photos:', uploadError);
-        }
-        damagePhotoUrls = urls;
-      }
-      
-      setUploadingPhotos(false);
+      // 2. Photos are already uploaded to Storage, use the URLs we have
+      // (uploaded when user selected files)
 
       // 3. Submit move-out intention using server action (proper auth context for RLS)
       const submitResult = await submitMoveOutIntention({
@@ -112,16 +75,156 @@ export default function MoveOutIntentionPage() {
     }
   }
 
-  function handleKeyAreaPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      setKeyAreaPhotos(Array.from(e.target.files));
+  async function handleKeyAreaPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+
+    const files = Array.from(e.target.files);
+    
+    // Validate max photos
+    if (files.length > MAX_PHOTOS_PER_SECTION) {
+      alert(`Maximum ${MAX_PHOTOS_PER_SECTION} photos allowed per section.`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validate file types
+    for (const file of files) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        alert(validation.error);
+        e.target.value = ''; // Reset input
+        return;
+      }
+    }
+
+    try {
+      setCompressing(true);
+      setCompressionProgress(`Compressing ${files.length} photo(s)...`);
+
+      // Compress all images
+      const compressedFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        setCompressionProgress(`Compressing photo ${i + 1} of ${files.length}...`);
+        const compressed = await compressImage(files[i]);
+        compressedFiles.push(compressed);
+      }
+
+      setKeyAreaPhotos(compressedFiles);
+      setCompressing(false);
+      setCompressionProgress('');
+
+      // Upload to Supabase Storage
+      setUploadingPhotos(true);
+      const urls = await uploadPhotosToStorage(compressedFiles);
+      setKeyAreaPhotoUrls(urls);
+      setUploadingPhotos(false);
+
+      console.log('Key area photos uploaded:', urls);
+      alert(`${urls.length} photo(s) uploaded successfully!`);
+    } catch (error) {
+      setCompressing(false);
+      setUploadingPhotos(false);
+      setCompressionProgress('');
+      const message = error instanceof Error ? error.message : 'Error processing photos';
+      alert(message);
+      e.target.value = ''; // Reset input
     }
   }
 
-  function handleDamagePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      setDamagePhotos(Array.from(e.target.files));
+  async function handleDamagePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
     }
+
+    const files = Array.from(e.target.files);
+    
+    // Validate max photos
+    if (files.length > MAX_PHOTOS_PER_SECTION) {
+      alert(`Maximum ${MAX_PHOTOS_PER_SECTION} photos allowed per section.`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validate file types
+    for (const file of files) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        alert(validation.error);
+        e.target.value = ''; // Reset input
+        return;
+      }
+    }
+
+    try {
+      setCompressing(true);
+      setCompressionProgress(`Compressing ${files.length} photo(s)...`);
+
+      // Compress all images
+      const compressedFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        setCompressionProgress(`Compressing photo ${i + 1} of ${files.length}...`);
+        const compressed = await compressImage(files[i]);
+        compressedFiles.push(compressed);
+      }
+
+      setDamagePhotos(compressedFiles);
+      setCompressing(false);
+      setCompressionProgress('');
+
+      // Upload to Supabase Storage
+      setUploadingPhotos(true);
+      const urls = await uploadPhotosToStorage(compressedFiles);
+      setDamagePhotoUrls(urls);
+      setUploadingPhotos(false);
+
+      console.log('Damage photos uploaded:', urls);
+      alert(`${urls.length} photo(s) uploaded successfully!`);
+    } catch (error) {
+      setCompressing(false);
+      setUploadingPhotos(false);
+      setCompressionProgress('');
+      const message = error instanceof Error ? error.message : 'Error processing photos';
+      alert(message);
+      e.target.value = ''; // Reset input
+    }
+  }
+
+  async function uploadPhotosToStorage(files: File[]): Promise<string[]> {
+    const supabase = createClient();
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      // Create unique filename with timestamp
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const filename = `${timestamp}-${randomStr}-${file.name}`;
+      
+      // Upload directly to storage
+      const { data, error } = await supabase.storage
+        .from('move-out-photos')
+        .upload(filename, file, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading file:', filename, error);
+        throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+      }
+
+      if (data) {
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('move-out-photos')
+          .getPublicUrl(filename);
+        
+        uploadedUrls.push(urlData.publicUrl);
+      }
+    }
+
+    return uploadedUrls;
   }
 
   if (submitted) {
@@ -317,14 +420,20 @@ export default function MoveOutIntentionPage() {
               multiple
               accept="image/*"
               onChange={handleKeyAreaPhotoChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              disabled={compressing || uploadingPhotos}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:bg-gray-100"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Upload photos of key areas in your room and common areas (multiple photos allowed)
+              Upload photos of key areas in your room and common areas (max {MAX_PHOTOS_PER_SECTION} photos)
             </p>
             {keyAreaPhotos.length > 0 && (
               <p className="text-sm text-green-600 mt-1">
-                {keyAreaPhotos.length} photo(s) selected
+                ✓ {keyAreaPhotos.length} photo(s) uploaded
+              </p>
+            )}
+            {compressing && compressionProgress && (
+              <p className="text-sm text-blue-600 mt-1">
+                ⏳ {compressionProgress}
               </p>
             )}
           </div>
@@ -338,14 +447,20 @@ export default function MoveOutIntentionPage() {
               multiple
               accept="image/*"
               onChange={handleDamagePhotoChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              disabled={compressing || uploadingPhotos}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:bg-gray-100"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Upload photos of any damages or stains (multiple photos allowed)
+              Upload photos of any damages or stains (max {MAX_PHOTOS_PER_SECTION} photos)
             </p>
             {damagePhotos.length > 0 && (
               <p className="text-sm text-green-600 mt-1">
-                {damagePhotos.length} photo(s) selected
+                ✓ {damagePhotos.length} photo(s) uploaded
+              </p>
+            )}
+            {compressing && compressionProgress && (
+              <p className="text-sm text-blue-600 mt-1">
+                ⏳ {compressionProgress}
               </p>
             )}
           </div>
@@ -398,10 +513,10 @@ export default function MoveOutIntentionPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading || uploadingPhotos}
+              disabled={loading || uploadingPhotos || compressing}
               className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
             >
-              {uploadingPhotos ? 'Uploading Photos...' : loading ? 'Submitting...' : 'Submit Move-Out Intention'}
+              {compressing ? 'Compressing...' : uploadingPhotos ? 'Uploading Photos...' : loading ? 'Submitting...' : 'Submit Move-Out Intention'}
             </button>
             <a
               href="/tenant"
