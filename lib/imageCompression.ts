@@ -17,8 +17,7 @@ const COMPRESSION_ATTEMPTS: CompressionOptions[] = [
 
 const MAX_FILE_SIZE_MB = 1;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024; // 1MB in bytes
-const TARGET_MIN_SIZE = 400 * 1024; // 400KB
-const TARGET_MAX_SIZE = 800 * 1024; // 800KB
+const TARGET_MAX_SIZE = 800 * 1024; // 800KB target
 
 /**
  * Compresses an image file to WebP format with automatic quality adjustment
