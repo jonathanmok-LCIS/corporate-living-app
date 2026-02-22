@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import SignatureCanvas from 'react-signature-canvas';
 import { getTenantPendingTenancy, confirmKeysReceived, getPreviousTenantMoveOutPhotos } from './actions';
@@ -35,32 +35,42 @@ export default function MoveInAcknowledgementPage() {
   const [previousMoveOut, setPreviousMoveOut] = useState<PreviousMoveOutData | null>(null);
   const [keysConfirmed, setKeysConfirmed] = useState(false);
 
-  const loadTenancyData = useCallback(async () => {
-    setLoading(true);
-    const result = await getTenantPendingTenancy();
+  useEffect(() => {
+    let cancelled = false;
     
-    if (result.error || !result.data) {
-      console.error('Error loading tenancy:', result.error);
-      setLoading(false);
-      return;
-    }
-    
-    setTenancyData(result.data as TenancyData);
-    
-    // Fetch previous tenant's move-out photos for this room
-    if (result.data.room?.id) {
-      const photosResult = await getPreviousTenantMoveOutPhotos(result.data.room.id);
-      if (photosResult.data) {
-        setPreviousMoveOut(photosResult.data as PreviousMoveOutData);
+    async function loadData() {
+      setLoading(true);
+      const result = await getTenantPendingTenancy();
+      
+      if (cancelled) return;
+      
+      if (result.error || !result.data) {
+        console.error('Error loading tenancy:', result.error);
+        setLoading(false);
+        return;
+      }
+      
+      setTenancyData(result.data as TenancyData);
+      
+      // Fetch previous tenant's move-out photos for this room
+      if (result.data.room?.id) {
+        const photosResult = await getPreviousTenantMoveOutPhotos(result.data.room.id);
+        if (!cancelled && photosResult.data) {
+          setPreviousMoveOut(photosResult.data as PreviousMoveOutData);
+        }
+      }
+      
+      if (!cancelled) {
+        setLoading(false);
       }
     }
     
-    setLoading(false);
+    loadData();
+    
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    loadTenancyData();
-  }, [loadTenancyData]);
 
   function handleClear() {
     sigCanvas.current?.clear();
