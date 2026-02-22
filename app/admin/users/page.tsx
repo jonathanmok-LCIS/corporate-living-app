@@ -5,6 +5,27 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Profile, UserRole } from '@/lib/types';
 import { createUser } from './actions';
 
+interface HouseCoordinator {
+  house?: {
+    name: string;
+  };
+}
+
+interface TenancyWithRoom {
+  status: string;
+  room?: {
+    label: string;
+    house?: {
+      name: string;
+    };
+  };
+}
+
+interface UserWithRelations extends Profile {
+  house_coordinators?: HouseCoordinator[];
+  tenancies?: TenancyWithRoom[];
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,27 +291,6 @@ export default function UsersPage() {
               </tr>
             ) : (
               users.map((user) => {
-                interface HouseCoordinator {
-                  house?: {
-                    name: string;
-                  };
-                }
-
-                interface TenancyWithRoom {
-                  status: string;
-                  room?: {
-                    label: string;
-                    house?: {
-                      name: string;
-                    };
-                  };
-                }
-
-                interface UserWithRelations extends Profile {
-                  house_coordinators?: HouseCoordinator[];
-                  tenancies?: TenancyWithRoom[];
-                }
-
                 const userWithRelations = user as UserWithRelations;
 
                 // Get house assignments based on role

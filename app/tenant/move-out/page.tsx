@@ -103,9 +103,9 @@ export default function MoveOutIntentionPage() {
       setSubmitted(true);
       alert('Move-out intention submitted successfully! Coordinators and admins have been notified.');
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Unknown error');
-      console.error('Error submitting move-out intention:', error);
-      alert(error?.message || 'Error submitting move-out intention. Please try again.');
+      console.error('Error submitting move-out intention:', err);
+      const message = err instanceof Error ? err.message : 'Error submitting move-out intention. Please try again.';
+      alert(message);
     } finally {
       setLoading(false);
       setUploadingPhotos(false);
