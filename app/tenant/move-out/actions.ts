@@ -76,19 +76,25 @@ export async function submitMoveOutIntention(data: {
       return { success: false, error: 'Not authenticated' };
     }
 
-    console.log('=== SUBMIT MOVE-OUT INTENTION ===');
-    console.log('User ID:', user.id);
-    console.log('User Email:', user.email);
-    console.log('Tenancy ID:', data.tenancyId);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('=== SUBMIT MOVE-OUT INTENTION ===');
+      console.log('User ID:', user.id);
+      console.log('User Email:', user.email);
+      console.log('Tenancy ID:', data.tenancyId);
+    }
 
     // Verify tenancy belongs to user
-    const { data: tenancyCheck, error: tenancyError } = await supabase
+    // Use admin client to bypass RLS (we validate ownership explicitly below)
+    const supabaseAdmin = getAdminClient();
+    const { data: tenancyCheck, error: tenancyError } = await supabaseAdmin
       .from('tenancies')
       .select('id, tenant_user_id, status')
       .eq('id', data.tenancyId)
       .maybeSingle();
 
-    console.log('Tenancy check:', tenancyCheck);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Tenancy check:', tenancyCheck);
+    }
     
     if (tenancyError) {
       console.error('Tenancy check error:', tenancyError);
@@ -109,7 +115,9 @@ export async function submitMoveOutIntention(data: {
     }
 
     // Insert move-out intention using server client (has proper auth context)
-    console.log('Inserting move-out intention...');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Inserting move-out intention...');
+    }
     const { data: insertedData, error: insertError } = await supabase
       .from('move_out_intentions')
       .insert([{
@@ -131,10 +139,14 @@ export async function submitMoveOutIntention(data: {
       return { success: false, error: insertError.message };
     }
 
-    console.log('Move-out intention inserted:', insertedData);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Move-out intention inserted:', insertedData);
+    }
 
     // Update tenancy status using server client
-    console.log('Updating tenancy status...');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Updating tenancy status...');
+    }
     const { error: updateError } = await supabase
       .from('tenancies')
       .update({ status: 'MOVE_OUT_INTENDED' })
@@ -145,8 +157,10 @@ export async function submitMoveOutIntention(data: {
       return { success: false, error: updateError.message };
     }
 
-    console.log('Tenancy status updated to MOVE_OUT_INTENDED');
-    console.log('=== SUBMIT COMPLETE ===');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Tenancy status updated to MOVE_OUT_INTENDED');
+      console.log('=== SUBMIT COMPLETE ===');
+    }
 
     return { success: true, error: null };
   } catch (error) {

@@ -25,6 +25,7 @@ export default function MoveOutIntentionPage() {
   const [tenancyError, setTenancyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState('');
@@ -78,8 +79,12 @@ export default function MoveOutIntentionPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
+    // Clear any previous submit errors
+    setSubmitError(null);
+    
     if (!tenancy) {
-      alert('No active tenancy found. Please refresh the page.');
+      // This should not happen because button is disabled, but handle gracefully
+      setSubmitError('No active tenancy found. Please refresh the page.');
       return;
     }
     
@@ -109,11 +114,10 @@ export default function MoveOutIntentionPage() {
 
       // Success!
       setSubmitted(true);
-      alert('Move-out intention submitted successfully! Coordinators and admins have been notified.');
     } catch (err) {
       console.error('Error submitting move-out intention:', err);
       const message = err instanceof Error ? err.message : 'Error submitting move-out intention. Please try again.';
-      alert(message);
+      setSubmitError(message);
     } finally {
       setLoading(false);
       setUploadingPhotos(false);
@@ -669,11 +673,30 @@ export default function MoveOutIntentionPage() {
             </ol>
           </div>
 
+          {/* Submit Error Display */}
+          {submitError && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Submission Error</h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{submitError}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading || uploadingPhotos || compressing}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
+              disabled={!tenancy || loading || uploadingPhotos || compressing}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
             >
               {compressing ? 'Compressing...' : uploadingPhotos ? 'Uploading Photos...' : loading ? 'Submitting...' : 'Submit Move-Out Intention'}
             </button>
