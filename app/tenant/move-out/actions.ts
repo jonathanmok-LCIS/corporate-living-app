@@ -108,24 +108,29 @@ export async function submitMoveOutIntention(data: {
     }
 
     // Insert move-out intention using server client (has proper auth context)
+    // Create payload with snake_case column names matching DB schema
+    const payload = {
+      tenancy_id: data.tenancyId,
+      planned_move_out_date: data.plannedMoveOutDate,
+      key_area_photos: data.keyAreaPhotos,
+      damage_photos: data.damagePhotos,
+      rent_paid_up: data.rentPaidUp,
+      areas_cleaned: data.areasCleaned,
+      has_damage: data.hasDamage,
+      damage_description: data.damageDescription,
+      notes: data.notes,
+      sign_off_status: 'PENDING',
+    };
+
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Inserting move-out intention...');
+      console.log('Inserting move-out intention with payload:', payload);
     }
+
     const { data: insertedData, error: insertError } = await supabase
       .from('move_out_intentions')
-      .insert([{
-        tenancy_id: data.tenancyId,
-        planned_move_out_date: data.plannedMoveOutDate,
-        notes: data.notes,
-        key_area_photos: data.keyAreaPhotos,
-        damage_photos: data.damagePhotos,
-        rent_paid_up: data.rentPaidUp,
-        areas_cleaned: data.areasCleaned,
-        has_damage: data.hasDamage,
-        damage_description: data.damageDescription,
-        sign_off_status: 'PENDING',
-      }])
-      .select();
+      .insert(payload)
+      .select()
+      .single();
 
     if (insertError) {
       console.error('Insert error:', insertError);
