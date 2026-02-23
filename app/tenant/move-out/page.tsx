@@ -1,13 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getTenantActiveTenancy, submitMoveOutIntention } from './actions';
 import { compressImage, validateImageFile } from '@/lib/imageCompression';
 import { createClient } from '@/lib/supabase-browser';
+import Link from 'next/link';
 
 const MAX_PHOTOS_PER_SECTION = 10;
 
+interface Tenancy {
+  id: string;
+  status: string;
+  room?: {
+    label: string;
+    house?: {
+      name: string;
+    };
+  };
+}
+
 export default function MoveOutIntentionPage() {
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [tenancy, setTenancy] = useState<Tenancy | null>(null);
+  const [tenancyError, setTenancyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [compressing, setCompressing] = useState(false);
@@ -26,21 +41,51 @@ export default function MoveOutIntentionPage() {
   const [keyAreaPhotoUrls, setKeyAreaPhotoUrls] = useState<string[]>([]);
   const [damagePhotoUrls, setDamagePhotoUrls] = useState<string[]>([]);
 
+  // Load tenancy on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTenancy() {
+      try {
+        const result = await getTenantActiveTenancy();
+        
+        if (cancelled) return;
+
+        if (result.error) {
+          setTenancyError(result.error);
+        } else if (result.data) {
+          setTenancy(result.data);
+        }
+        // If no error and no data, tenancy is just null (no active tenancy)
+      } catch (err) {
+        if (!cancelled) {
+          setTenancyError(err instanceof Error ? err.message : 'Failed to load tenancy');
+        }
+      } finally {
+        if (!cancelled) {
+          setInitialLoading(false);
+        }
+      }
+    }
+
+    loadTenancy();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    if (!tenancy) {
+      alert('No active tenancy found. Please refresh the page.');
+      return;
+    }
     
     setLoading(true);
 
     try {
-      // 1. Get current user's active tenancy using server action
-      const result = await getTenantActiveTenancy();
-      
-      if (result.error || !result.data) {
-        alert('No active tenancy found. Please contact your administrator.');
-        return;
-      }
-      
-      const tenancy = result.data;
 
       // 2. Photos are already uploaded to Storage, use the URLs we have
       // (uploaded when user selected files)
@@ -231,6 +276,101 @@ export default function MoveOutIntentionPage() {
     return uploadedPaths;
   }
 
+  // Loading state
+  if (initialLoading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading your tenancy information...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (tenancyError) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
+          <h1 className="text-2xl font-bold text-red-900 mb-2">Error Loading Tenancy</h1>
+          <p className="text-red-800 mb-4">{tenancyError}</p>
+          <div className="space-x-4">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Retry
+            </button>
+            <Link
+              href="/tenant"
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 inline-block"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No active tenancy state
+  if (!tenancy) {
+    const isDev = process.env.NODE_ENV !== 'production';
+    
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg">
+          <h1 className="text-2xl font-bold text-yellow-900 mb-2">No Active Tenancy Found</h1>
+          <p className="text-yellow-800 mb-4">
+            You don&apos;t have an active tenancy associated with your account.
+          </p>
+          <div className="space-y-4">
+            <div className="bg-yellow-100 p-4 rounded">
+              <p className="text-sm text-yellow-900 mb-2">
+                <strong>What this means:</strong>
+              </p>
+              <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
+                <li>Your tenancy may have ended</li>
+                <li>Your account may not be linked to a room yet</li>
+                <li>Contact your house coordinator for assistance</li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/tenant"
+                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-center"
+              >
+                Back to Dashboard
+              </Link>
+              
+              {isDev && (
+                <Link
+                  href="/dev/seed-tenancy"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-center"
+                >
+                  🛠️ Create Test Tenancy (Dev Only)
+                </Link>
+              )}
+            </div>
+            
+            {isDev && (
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-700">
+                <strong>Development Mode:</strong> Use the &quot;Create Test Tenancy&quot; button to set up a test tenancy for this account.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Success state
   if (submitted) {
     return (
       <div className="max-w-2xl mx-auto">
@@ -254,22 +394,37 @@ export default function MoveOutIntentionPage() {
             )}
           </div>
           <div className="mt-6">
-            <a
+            <Link
               href="/tenant"
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 inline-block"
             >
               Back to Dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
+  // Active tenancy - show form
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white p-6 rounded-lg shadow">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Submit Move-Out Intention</h1>
+        
+        {/* Current Tenancy Info */}
+        <div className="bg-gray-50 border border-gray-200 p-4 mb-6 rounded">
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Current Tenancy</h2>
+          <div className="text-sm text-gray-600 space-y-1">
+            {tenancy.room?.house?.name && (
+              <p><strong>House:</strong> {tenancy.room.house.name}</p>
+            )}
+            {tenancy.room?.label && (
+              <p><strong>Room:</strong> {tenancy.room.label}</p>
+            )}
+            <p><strong>Status:</strong> {tenancy.status}</p>
+          </div>
+        </div>
         
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
           <p className="text-blue-800">
