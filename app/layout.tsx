@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Corporate Living App",
-  description: "Manage corporate housing, tenancies, and move-in/out processes",
+  description: "Manage move-in and move-out for corporate living houses",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className="antialiased font-sans">
         {children}
       </body>
     </html>
