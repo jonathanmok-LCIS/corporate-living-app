@@ -563,25 +563,37 @@ export default function CoordinatorInspectionDetailPage() {
                   ))}
                   
                   {canEdit && area.photos.length < MAX_PHOTOS_PER_AREA && (
-                    <div>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        multiple
+                        ref={(el) => { fileInputRefs.current[area.id] = el; }}
+                        onChange={(e) => handlePhotoUpload(area.id, e.target.files)}
+                        className="hidden"
+                      />
                       <input
                         type="file"
                         accept="image/*"
                         multiple
-                        ref={(el) => { fileInputRefs.current[area.id] = el; }}
+                        id={`library-${area.id}`}
                         onChange={(e) => handlePhotoUpload(area.id, e.target.files)}
                         className="hidden"
                       />
                       <button
                         onClick={() => fileInputRefs.current[area.id]?.click()}
                         disabled={uploadingAreaId === area.id}
-                        className="w-32 h-32 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 disabled:opacity-50"
+                        className="w-32 h-16 border-2 border-dashed border-green-300 bg-green-50 rounded flex items-center justify-center text-green-600 hover:bg-green-100 disabled:opacity-50 text-sm font-medium"
                       >
-                        {uploadingAreaId === area.id ? (
-                          <span className="text-sm">Uploading...</span>
-                        ) : (
-                          <span className="text-3xl">+</span>
-                        )}
+                        {uploadingAreaId === area.id ? 'Uploading...' : '📷 Camera'}
+                      </button>
+                      <button
+                        onClick={() => document.getElementById(`library-${area.id}`)?.click()}
+                        disabled={uploadingAreaId === area.id}
+                        className="w-32 h-16 border-2 border-dashed border-gray-300 bg-gray-50 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-50 text-sm font-medium"
+                      >
+                        {uploadingAreaId === area.id ? 'Uploading...' : '🖼️ Library'}
                       </button>
                     </div>
                   )}

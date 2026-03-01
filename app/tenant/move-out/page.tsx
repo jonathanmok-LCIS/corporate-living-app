@@ -806,10 +806,39 @@ export default function MoveOutIntentionPage() {
               type="file"
               multiple
               accept="image/*"
+              capture="environment"
               onChange={handleKeyAreaPhotoChange}
               disabled={compressing || uploadingPhotos}
-              className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-base disabled:bg-gray-100"
+              className="hidden"
+              id="key-area-camera"
             />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleKeyAreaPhotoChange}
+              disabled={compressing || uploadingPhotos}
+              className="hidden"
+              id="key-area-library"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => document.getElementById('key-area-camera')?.click()}
+                disabled={compressing || uploadingPhotos}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-blue-300 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 font-medium"
+              >
+                📷 Take Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById('key-area-library')?.click()}
+                disabled={compressing || uploadingPhotos}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-300 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50 font-medium"
+              >
+                🖼️ Photo Library
+              </button>
+            </div>
             <p className="text-sm text-gray-500 mt-1">
               Max {MAX_PHOTOS_PER_SECTION} photos. Images are automatically compressed.
             </p>
@@ -859,10 +888,39 @@ export default function MoveOutIntentionPage() {
               type="file"
               multiple
               accept="image/*"
+              capture="environment"
               onChange={handleDamagePhotoChange}
               disabled={compressing || uploadingPhotos}
-              className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-base disabled:bg-gray-100"
+              className="hidden"
+              id="damage-camera"
             />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleDamagePhotoChange}
+              disabled={compressing || uploadingPhotos}
+              className="hidden"
+              id="damage-library"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => document.getElementById('damage-camera')?.click()}
+                disabled={compressing || uploadingPhotos}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-blue-300 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 font-medium"
+              >
+                📷 Take Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById('damage-library')?.click()}
+                disabled={compressing || uploadingPhotos}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-300 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50 font-medium"
+              >
+                🖼️ Photo Library
+              </button>
+            </div>
             <p className="text-sm text-gray-500 mt-1">
               {existingIntention?.sign_off_status === 'REJECTED'
                 ? `Add more photos if needed (max ${MAX_PHOTOS_PER_SECTION} total)`
