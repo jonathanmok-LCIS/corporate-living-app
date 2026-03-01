@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { House, Profile, HouseCoordinator } from '@/lib/types';
 
 import { assignCoordinator, removeCoordinator } from './actions';
@@ -23,7 +23,7 @@ export default function HouseCoordinatorsPage() {
   const [selectedCoordinator, setSelectedCoordinator] = useState('');
 
   const fetchHouse = useCallback(async () => {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -41,7 +41,7 @@ export default function HouseCoordinatorsPage() {
   }, [houseId, router]);
 
   const fetchCoordinators = useCallback(async () => {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -69,13 +69,13 @@ export default function HouseCoordinatorsPage() {
   }, [fetchHouse, fetchCoordinators]);
 
   async function fetchAvailableCoordinators() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .in('role', ['COORDINATOR', 'ADMIN'])
+        .overlaps('roles', ['COORDINATOR', 'ADMIN'])
         .order('name');
 
       if (error) throw error;
@@ -162,12 +162,12 @@ export default function HouseCoordinatorsPage() {
           <select
             value={selectedCoordinator}
             onChange={(e) => setSelectedCoordinator(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+            className="flex-1 px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
           >
             <option value="">Select a coordinator...</option>
             {filteredAvailable.map(coordinator => (
               <option key={coordinator.id} value={coordinator.id}>
-                {coordinator.name} ({coordinator.email}) - {coordinator.role}
+                {coordinator.name} ({coordinator.email}) - {coordinator.roles?.join(', ')}
               </option>
             ))}
           </select>
@@ -221,9 +221,13 @@ export default function HouseCoordinatorsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {coordinator.profile?.role}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {(coordinator.profile?.roles || []).map((role) => (
+                        <span key={role} className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button

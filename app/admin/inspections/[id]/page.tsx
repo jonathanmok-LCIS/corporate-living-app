@@ -10,7 +10,6 @@ interface InspectionDetail {
   id: string;
   status: string;
   created_at: string;
-  created_by: string;
   finalised_at: string | null;
   notes: string | null;
   house?: {
@@ -20,7 +19,6 @@ interface InspectionDetail {
   created_by_profile?: {
     name: string;
     email: string;
-    roles: string[];
   };
 }
 
@@ -57,7 +55,7 @@ const KEY_AREAS_ORDER = [
 // Maximum photos per area to reduce storage
 const MAX_PHOTOS_PER_AREA = 5;
 
-export default function CoordinatorInspectionDetailPage() {
+export default function AdminInspectionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const inspectionId = params.id as string;
@@ -87,7 +85,7 @@ export default function CoordinatorInspectionDetailPage() {
         .select(`
           *,
           house:houses(id, name),
-          created_by_profile:profiles!created_by(name, email, roles)
+          created_by_profile:profiles!created_by(name, email)
         `)
         .eq('id', inspectionId)
         .single();
@@ -154,7 +152,7 @@ export default function CoordinatorInspectionDetailPage() {
     }
   }
 
-  async function handleSaveArea(areaId: string, field: string, value: string | boolean) {
+  async function handleSaveArea(areaId: string, field: string, value: string) {
     const supabase = createClient();
     setSaving(true);
 
@@ -263,37 +261,32 @@ export default function CoordinatorInspectionDetailPage() {
     }
   }
 
-  async function handleMarkActionComplete(areaId: string, completed: boolean, notes: string) {
+  async function handleReopen() {
+    if (!confirm('Reopen this inspection to make edits?')) {
+      return;
+    }
+
     const supabase = createClient();
-    setSaving(true);
 
     try {
       const { error } = await supabase
-        .from('inspection_areas')
-        .update({ 
-          action_completed: completed,
-          completion_notes: notes,
+        .from('inspections')
+        .update({
+          status: 'DRAFT',
+          finalised_at: null,
         })
-        .eq('id', areaId);
+        .eq('id', inspectionId);
 
       if (error) throw error;
-
-      // Update local state
-      setAreas(areas.map(area => 
-        area.id === areaId ? { ...area, action_completed: completed, completion_notes: notes } : area
-      ));
-      
-      alert('Action status updated');
+      fetchInspection();
     } catch (err) {
-      console.error('Error updating action:', err);
-      alert('Error updating. Please try again.');
-    } finally {
-      setSaving(false);
+      console.error('Error reopening inspection:', err);
+      alert('Error reopening inspection. Please try again.');
     }
   }
 
   async function handleFinalise() {
-    if (!confirm('Are you sure you want to finalise this inspection? This action cannot be undone.')) {
+    if (!confirm('Finalise this inspection? You can reopen it later if needed.')) {
       return;
     }
 
@@ -340,7 +333,7 @@ export default function CoordinatorInspectionDetailPage() {
     return (
       <div className="text-center py-8">
         <p className="text-gray-500">Inspection not found.</p>
-        <Link href="/coordinator/inspections" className="text-green-600 hover:underline mt-4 inline-block">
+        <Link href="/admin/inspections" className="text-purple-600 hover:underline mt-4 inline-block">
           Back to Inspections
         </Link>
       </div>
@@ -348,43 +341,35 @@ export default function CoordinatorInspectionDetailPage() {
   }
 
   const isDraft = inspection.status === 'DRAFT';
-  const isFinal = inspection.status === 'FINAL';
-  
-  // Check if inspection was created by an admin
-  const isAdminCreated = inspection.created_by_profile?.roles?.includes('ADMIN') ?? false;
-  
-  // Coordinator can edit if inspection is draft AND was NOT created by admin
-  const canEdit = isDraft && !isAdminCreated;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <Link href="/coordinator/inspections" className="text-green-600 hover:underline text-sm">
+          <Link href="/admin/inspections" className="text-purple-600 hover:underline text-sm">
             ← Back to Inspections
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mt-2">House Inspection</h1>
         </div>
-        {canEdit && (
-          <button
-            onClick={handleFinalise}
-            disabled={finalizing}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
-          >
-            {finalizing ? 'Finalising...' : 'Finalise Inspection'}
-          </button>
-        )}
-      </div>
-
-      {/* Admin-created notice */}
-      {isAdminCreated && (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-          <p className="text-blue-700">
-            <strong>Admin Inspection:</strong> This inspection was created by {inspection.created_by_profile?.name}. 
-            You can mark action items as completed and add notes, but cannot modify the inspection content.
-          </p>
+        <div className="flex gap-2">
+          {isDraft ? (
+            <button
+              onClick={handleFinalise}
+              disabled={finalizing}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-green-300"
+            >
+              {finalizing ? 'Finalising...' : 'Finalise Inspection'}
+            </button>
+          ) : (
+            <button
+              onClick={handleReopen}
+              className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
+            >
+              Reopen for Editing
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Inspection Info */}
       <div className="bg-white p-6 rounded-lg shadow">
@@ -444,7 +429,7 @@ export default function CoordinatorInspectionDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Description
                   </label>
-                  {canEdit ? (
+                  {isDraft ? (
                     <textarea
                       rows={3}
                       value={area.description || ''}
@@ -454,7 +439,7 @@ export default function CoordinatorInspectionDetailPage() {
                         ));
                       }}
                       onBlur={(e) => handleSaveArea(area.id, 'description', e.target.value)}
-                      className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 text-base"
+                      className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base"
                       placeholder="Describe the condition of this area..."
                     />
                   ) : (
@@ -469,7 +454,7 @@ export default function CoordinatorInspectionDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Action Items
                   </label>
-                  {canEdit ? (
+                  {isDraft ? (
                     <textarea
                       rows={3}
                       value={area.action_items || ''}
@@ -479,7 +464,7 @@ export default function CoordinatorInspectionDetailPage() {
                         ));
                       }}
                       onBlur={(e) => handleSaveArea(area.id, 'action_items', e.target.value)}
-                      className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 text-base"
+                      className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base"
                       placeholder="List any action items required..."
                     />
                   ) : (
@@ -487,48 +472,16 @@ export default function CoordinatorInspectionDetailPage() {
                       <p className="text-gray-900 bg-gray-50 p-3 rounded">
                         {area.action_items || 'No action items'}
                       </p>
-                      
-                      {/* Action completion for admin-created or finalised inspections */}
-                      {(isFinal || isAdminCreated) && area.action_items && (
-                        <div className="mt-4 p-4 border rounded bg-gray-50">
-                          <div className="flex items-center gap-3 mb-3">
-                            <input
-                              type="checkbox"
-                              id={`completed-${area.id}`}
-                              checked={area.action_completed}
-                              onChange={(e) => {
-                                setAreas(areas.map(a => 
-                                  a.id === area.id ? { ...a, action_completed: e.target.checked } : a
-                                ));
-                              }}
-                              className="h-5 w-5 text-green-600 rounded focus:ring-green-500"
-                            />
-                            <label 
-                              htmlFor={`completed-${area.id}`}
-                              className="font-medium text-gray-900"
-                            >
-                              Actions completed
-                            </label>
-                          </div>
-                          <textarea
-                            rows={2}
-                            value={area.completion_notes || ''}
-                            onChange={(e) => {
-                              setAreas(areas.map(a => 
-                                a.id === area.id ? { ...a, completion_notes: e.target.value } : a
-                              ));
-                            }}
-                            className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 text-base"
-                            placeholder="Add completion notes..."
-                          />
-                          <button
-                            onClick={() => handleMarkActionComplete(area.id, area.action_completed, area.completion_notes || '')}
-                            disabled={saving}
-                            className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-green-300 text-sm"
-                          >
-                            {saving ? 'Saving...' : 'Save'}
-                          </button>
+                      {area.action_completed && (
+                        <div className="mt-2 flex items-center text-green-600">
+                          <span className="mr-1">✓</span>
+                          <span className="text-sm">Actions completed</span>
                         </div>
+                      )}
+                      {area.completion_notes && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          <strong>Notes:</strong> {area.completion_notes}
+                        </p>
                       )}
                     </div>
                   )}
@@ -551,7 +504,7 @@ export default function CoordinatorInspectionDetailPage() {
                           className="w-32 h-32 object-cover rounded border hover:opacity-75"
                         />
                       </a>
-                      {canEdit && (
+                      {isDraft && (
                         <button
                           onClick={() => handleDeletePhoto(photo.id, photo.url)}
                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -562,7 +515,7 @@ export default function CoordinatorInspectionDetailPage() {
                     </div>
                   ))}
                   
-                  {canEdit && area.photos.length < MAX_PHOTOS_PER_AREA && (
+                  {isDraft && area.photos.length < MAX_PHOTOS_PER_AREA && (
                     <div>
                       <input
                         type="file"
@@ -575,7 +528,7 @@ export default function CoordinatorInspectionDetailPage() {
                       <button
                         onClick={() => fileInputRefs.current[area.id]?.click()}
                         disabled={uploadingAreaId === area.id}
-                        className="w-32 h-32 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 disabled:opacity-50"
+                        className="w-32 h-32 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 hover:border-purple-500 hover:text-purple-500 disabled:opacity-50"
                       >
                         {uploadingAreaId === area.id ? (
                           <span className="text-sm">Uploading...</span>
@@ -585,7 +538,7 @@ export default function CoordinatorInspectionDetailPage() {
                       </button>
                     </div>
                   )}
-                  {canEdit && area.photos.length >= MAX_PHOTOS_PER_AREA && (
+                  {isDraft && area.photos.length >= MAX_PHOTOS_PER_AREA && (
                     <div className="w-32 h-32 border-2 border-dashed border-gray-200 rounded flex items-center justify-center text-gray-400 text-xs text-center p-2">
                       Max {MAX_PHOTOS_PER_AREA} photos reached
                     </div>

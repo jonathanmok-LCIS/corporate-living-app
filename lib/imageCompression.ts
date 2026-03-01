@@ -9,23 +9,23 @@ interface CompressionOptions {
 }
 
 const COMPRESSION_ATTEMPTS: CompressionOptions[] = [
-  { maxWidthOrHeight: 1600, quality: 0.8 },  // First attempt
-  { maxWidthOrHeight: 1600, quality: 0.7 },  // Lower quality
-  { maxWidthOrHeight: 1400, quality: 0.7 },  // Smaller size + lower quality
-  { maxWidthOrHeight: 1200, quality: 0.6 },  // Final attempt
+  { maxWidthOrHeight: 1400, quality: 0.75 },  // First attempt
+  { maxWidthOrHeight: 1200, quality: 0.65 },  // Lower quality
+  { maxWidthOrHeight: 1000, quality: 0.55 },  // Smaller size + lower quality
+  { maxWidthOrHeight: 800, quality: 0.5 },    // Final attempt
 ];
 
-const MAX_FILE_SIZE_MB = 1;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024; // 1MB in bytes
-const TARGET_MAX_SIZE = 800 * 1024; // 800KB target
+const MAX_FILE_SIZE_MB = 0.5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024; // 500KB in bytes
+const TARGET_MAX_SIZE = 400 * 1024; // 400KB target
 
 /**
  * Compresses an image file to WebP format with automatic quality adjustment
- * to ensure the file size is under 1MB.
+ * to ensure the file size is under 500KB (stored in buckets with 1MB limit).
  * 
  * @param file - The image file to compress
  * @returns Promise<File> - The compressed image file in WebP format
- * @throws Error if compression fails or file cannot be reduced to under 1MB
+ * @throws Error if compression fails or file cannot be reduced under limit
  */
 export async function compressImage(file: File): Promise<File> {
   // Validate file type

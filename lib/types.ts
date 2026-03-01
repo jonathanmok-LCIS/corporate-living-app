@@ -16,9 +16,19 @@ export interface Profile {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  roles: UserRole[];  // Changed from single role to array of roles
   created_at: string;
   updated_at: string;
+}
+
+// Helper function to check if user has a specific role
+export function hasRole(profile: Profile | null, role: UserRole): boolean {
+  return profile?.roles?.includes(role) ?? false;
+}
+
+// Helper function to get the primary (first) role for display purposes
+export function getPrimaryRole(profile: Profile | null): UserRole | null {
+  return profile?.roles?.[0] ?? null;
 }
 
 export interface House {

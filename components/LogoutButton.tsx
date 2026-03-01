@@ -3,7 +3,19 @@
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 
-export default function LogoutButton() {
+type LogoutVariant = 'admin' | 'coordinator' | 'tenant';
+
+const VARIANT_STYLES: Record<LogoutVariant, string> = {
+  admin: 'bg-purple-800 hover:bg-purple-900',
+  coordinator: 'bg-green-800 hover:bg-green-900',
+  tenant: 'bg-blue-800 hover:bg-blue-900',
+};
+
+interface LogoutButtonProps {
+  variant?: LogoutVariant;
+}
+
+export default function LogoutButton({ variant = 'admin' }: LogoutButtonProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -16,7 +28,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="bg-purple-800 hover:bg-purple-900 px-3 py-1 rounded text-sm"
+      className={`${VARIANT_STYLES[variant]} px-3 py-1 rounded text-sm shadow-md`}
     >
       Logout
     </button>

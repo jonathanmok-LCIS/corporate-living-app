@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { House } from '@/lib/types';
+import Link from 'next/link';
+
+interface HouseWithInspection extends House {
+  lastInspectionDate?: string | null;
+  lastInspectionId?: string | null;
+}
 
 export default function HousesPage() {
-  const [houses, setHouses] = useState<House[]>([]);
+  const [houses, setHouses] = useState<HouseWithInspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,16 +29,45 @@ export default function HousesPage() {
   }, []);
 
   async function fetchHouses() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
-      const { data, error } = await supabase
+      // Fetch houses
+      const { data: housesData, error: housesError } = await supabase
         .from('houses')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setHouses(data || []);
+      if (housesError) throw housesError;
+      
+      // For each house, get the latest finalized inspection
+      const housesWithInspections: HouseWithInspection[] = [];
+      
+      for (const house of housesData || []) {
+        // Get the latest inspection for this house through rooms
+        const { data: inspectionData } = await supabase
+          .from('inspections')
+          .select(`
+            id,
+            finalised_at,
+            created_at,
+            room:rooms!inner(house_id)
+          `)
+          .eq('room.house_id', house.id)
+          .eq('status', 'FINAL')
+          .order('finalised_at', { ascending: false })
+          .limit(1);
+        
+        const latestInspection = inspectionData?.[0];
+        
+        housesWithInspections.push({
+          ...house,
+          lastInspectionDate: latestInspection?.finalised_at || latestInspection?.created_at || null,
+          lastInspectionId: latestInspection?.id || null,
+        });
+      }
+      
+      setHouses(housesWithInspections);
     } catch (error) {
       console.error('Error fetching houses:', error);
     } finally {
@@ -42,8 +77,7 @@ export default function HousesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       if (editingId) {
@@ -72,7 +106,7 @@ export default function HousesPage() {
   }
 
   async function handleToggleActive(id: string, active: boolean) {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { error } = await supabase
@@ -170,7 +204,7 @@ export default function HousesPage() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base placeholder:text-gray-500"
                 placeholder="e.g., Main House, North Wing"
               />
             </div>
@@ -182,7 +216,7 @@ export default function HousesPage() {
                 type="text"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base placeholder:text-gray-500"
                 placeholder="123 Main St, City, State ZIP"
               />
             </div>
@@ -217,6 +251,9 @@ export default function HousesPage() {
                 Address
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Last Inspection
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -227,7 +264,7 @@ export default function HousesPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {houses.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                   No houses found. Add your first house to get started.
                 </td>
               </tr>
@@ -239,6 +276,29 @@ export default function HousesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{house.address || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {house.lastInspectionDate ? (
+                      <div>
+                        <div className="text-sm text-gray-900">
+                          {new Date(house.lastInspectionDate).toLocaleDateString('en-AU', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </div>
+                        {house.lastInspectionId && (
+                          <Link
+                            href={`/admin/inspections/${house.lastInspectionId}`}
+                            className="text-xs text-purple-600 hover:underline"
+                          >
+                            View Report
+                          </Link>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">No inspections</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span

@@ -1,5 +1,15 @@
+'use client';
+
 import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
+import RoleSwitcher from '@/components/RoleSwitcher';
+import MobileNav from '@/components/MobileNav';
+
+const NAV_LINKS = [
+  { href: '/coordinator', label: 'Dashboard' },
+  { href: '/coordinator/inspections', label: 'Inspections' },
+  { href: '/coordinator/move-out-reviews', label: 'Reviews' },
+];
 
 export default function CoordinatorLayout({
   children,
@@ -8,33 +18,23 @@ export default function CoordinatorLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="bg-green-600 text-white shadow-lg">
+      <nav className="bg-green-600 text-white shadow-lg relative">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-8">
-              <Link href="/coordinator" className="text-xl font-bold hover:text-green-100">
+            <div className="flex items-center space-x-4 md:space-x-8">
+              <Link href="/coordinator" className="text-lg md:text-xl font-bold hover:text-green-100">
                 Corporate Living
               </Link>
-              <div className="hidden md:flex space-x-4">
-                <Link href="/coordinator" className="hover:bg-green-700 px-3 py-2 rounded">
-                  Dashboard
-                </Link>
-                <Link href="/coordinator/inspections" className="hover:bg-green-700 px-3 py-2 rounded">
-                  Inspections
-                </Link>
-                <Link href="/coordinator/move-out-reviews" className="hover:bg-green-700 px-3 py-2 rounded">
-                  Move-Out Reviews
-                </Link>
-              </div>
+              <MobileNav links={NAV_LINKS} colorScheme="green" />
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="bg-green-800 px-3 py-1 rounded text-sm">Coordinator</span>
-              <LogoutButton />
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <RoleSwitcher currentRole="COORDINATOR" />
+              <LogoutButton variant="coordinator" />
             </div>
           </div>
         </div>
       </nav>
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-4 md:py-8">
         {children}
       </main>
     </div>

@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import SignatureCanvas from 'react-signature-canvas';
-import { getTenantPendingTenancy, confirmKeysReceived, getPreviousTenantMoveOutPhotos } from './actions';
+import { getTenantPendingTenancy, submitMoveInAcknowledgement, getPreviousTenantMoveOutPhotos } from './actions';
 
 interface TenancyData {
   id: string;
@@ -92,11 +92,21 @@ export default function MoveInAcknowledgementPage() {
       return;
     }
     
-    // Confirm keys received
-    const result = await confirmKeysReceived(tenancyData.id);
+    // Get signature as data URL
+    const signatureDataUrl = sigCanvas.current.toDataURL('image/png');
+    
+    // Submit full move-in acknowledgement with signature
+    const result = await submitMoveInAcknowledgement({
+      tenancyId: tenancyData.id,
+      conditionAccepted: true, // They accepted by signing
+      defectPhotos: [], // Future: allow tenant to upload defect photos
+      defectNotes: '', // Future: allow tenant to add notes
+      previousMoveOutId: previousMoveOut?.id || null,
+      signatureDataUrl,
+    });
     
     if (!result.success) {
-      alert('Error confirming keys: ' + result.error);
+      alert('Error submitting acknowledgement: ' + result.error);
       return;
     }
     

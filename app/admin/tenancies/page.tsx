@@ -106,7 +106,7 @@ export default function TenanciesPage() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .in('role', ['TENANT', 'COORDINATOR'])
+        .overlaps('roles', ['TENANT', 'COORDINATOR'])
         .order('name');
 
       if (error) throw error;
@@ -239,7 +239,7 @@ export default function TenanciesPage() {
                 required
                 value={formData.room_id}
                 onChange={(e) => setFormData({ ...formData, room_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
               >
                 <option value="">Select a room...</option>
                 {rooms.map(room => {
@@ -262,7 +262,7 @@ export default function TenanciesPage() {
                   required
                   value={formData.slot}
                   onChange={(e) => setFormData({ ...formData, slot: e.target.value as 'A' | 'B' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
                 >
                   <option value="">Select a slot...</option>
                   <option value="A">Slot A</option>
@@ -279,7 +279,7 @@ export default function TenanciesPage() {
                 required
                 value={formData.tenant_user_id}
                 onChange={(e) => setFormData({ ...formData, tenant_user_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
               >
                 <option value="">Select a tenant...</option>
                 {tenants.map(tenant => (
@@ -299,7 +299,7 @@ export default function TenanciesPage() {
                 required
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
               />
             </div>
 
@@ -311,7 +311,7 @@ export default function TenanciesPage() {
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
               />
             </div>
 
@@ -325,7 +325,7 @@ export default function TenanciesPage() {
                 min="0"
                 value={formData.rental_price}
                 onChange={(e) => setFormData({ ...formData, rental_price: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
                 placeholder="0.00"
               />
             </div>

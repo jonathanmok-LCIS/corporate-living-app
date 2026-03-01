@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createHouseWithRooms } from '../actions';
 
 interface RoomFormData {
   label: string;
@@ -59,40 +59,23 @@ export default function QuickSetupPage() {
   }
 
   async function handleSubmit() {
-    if (!supabase) return;
-    
     setLoading(true);
     
     try {
-      // Create house
-      const { data: house, error: houseError } = await supabase
-        .from('houses')
-        .insert([houseData])
-        .select()
-        .single();
-
-      if (houseError) throw houseError;
-
-      // Create rooms
-      const roomsToInsert = rooms
+      // Use server action to create house and rooms
+      const roomsData = rooms
         .filter(r => r.label.trim() !== '')
-        .map(r => ({
-          house_id: house.id,
-          label: r.label,
-          capacity: r.capacity
-        }));
+        .map(r => ({ label: r.label, capacity: r.capacity }));
 
-      if (roomsToInsert.length > 0) {
-        const { error: roomsError } = await supabase
-          .from('rooms')
-          .insert(roomsToInsert);
+      const result = await createHouseWithRooms(houseData, roomsData);
 
-        if (roomsError) throw roomsError;
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       // Success!
-      alert(`Successfully created "${house.name}" with ${roomsToInsert.length} room(s)!`);
-      router.push(`/admin/houses/${house.id}/rooms`);
+      alert(`Successfully created "${result.data!.name}" with ${result.roomsCreated} room(s)!`);
+      router.push(`/admin/houses/${result.data!.id}/rooms`);
     } catch (err) {
       console.error('Error in quick setup:', err);
       const message = err instanceof Error ? err.message : 'Error creating house and rooms. Please try again.';
@@ -100,17 +83,6 @@ export default function QuickSetupPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  if (!isSupabaseConfigured()) {
-    return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
-        <h2 className="text-xl font-bold text-red-900 mb-2">Supabase Not Configured</h2>
-        <p className="text-red-800">
-          Please configure your Supabase credentials in <code className="bg-red-100 px-1 rounded">.env.local</code> to use this application.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -162,7 +134,7 @@ export default function QuickSetupPage() {
                 required
                 value={houseData.name}
                 onChange={(e) => setHouseData({ ...houseData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base placeholder:text-gray-500"
                 placeholder="e.g., Main House, North Wing, Student House A"
               />
             </div>
@@ -174,7 +146,7 @@ export default function QuickSetupPage() {
                 type="text"
                 value={houseData.address}
                 onChange={(e) => setHouseData({ ...houseData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base placeholder:text-gray-500"
                 placeholder="123 Main St, City, State ZIP"
               />
             </div>
@@ -235,7 +207,7 @@ export default function QuickSetupPage() {
                         required
                         value={room.label}
                         onChange={(e) => updateRoom(room.tempId, 'label', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-500"
                         placeholder={`Room ${index + 1}`}
                       />
                     </div>

@@ -191,7 +191,7 @@ export async function getTenantActiveTenancy() {
     // DIAGNOSTIC: Check if profile exists for this auth user
     const { data: profileCheck, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name, role')
+      .select('id, email, name, roles')
       .eq('id', user.id)
       .maybeSingle();
     
@@ -272,5 +272,87 @@ export async function getTenantActiveTenancy() {
     console.error('getTenantActiveTenancy: Exception:', error);
     console.log('=== DIAGNOSTIC END (ERROR) ===');
     return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+}
+
+export async function getTenantMoveOutIntention(tenancyId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return { data: null, error: 'Not authenticated' };
+    }
+
+    const { data, error } = await supabase
+      .from('move_out_intentions')
+      .select('*')
+      .eq('tenancy_id', tenancyId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTenantMoveOutIntention: Database error:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('getTenantMoveOutIntention: Exception:', error);
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+  }
+}
+
+export async function resubmitMoveOutIntention(data: {
+  intentionId: string;
+  tenancyId: string;
+  plannedMoveOutDate: string;
+  notes: string | null;
+  keyAreaPhotos: string[];
+  damagePhotos: string[];
+  rentPaidUp: boolean;
+  areasCleaned: boolean;
+  hasDamage: boolean;
+  damageDescription: string | null;
+}) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Update the existing intention
+    const payload = {
+      planned_move_out_date: data.plannedMoveOutDate,
+      key_area_photos: data.keyAreaPhotos,
+      damage_photos: data.damagePhotos,
+      rent_paid_up: data.rentPaidUp,
+      areas_cleaned: data.areasCleaned,
+      has_damage: data.hasDamage,
+      damage_description: data.damageDescription,
+      notes: data.notes,
+      sign_off_status: 'PENDING',
+      coordinator_notes: null,
+      coordinator_signed_off_by: null,
+      coordinator_signed_off_at: null,
+    };
+
+    const { error: updateError } = await supabase
+      .from('move_out_intentions')
+      .update(payload)
+      .eq('id', data.intentionId);
+
+    if (updateError) {
+      console.error('resubmitMoveOutIntention: Update error:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('resubmitMoveOutIntention: Exception:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }

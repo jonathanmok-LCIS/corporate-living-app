@@ -202,7 +202,7 @@ export default function RoomsPage() {
                 required
                 value={formData.label}
                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base placeholder:text-gray-500"
                 placeholder="e.g., Room 101, Master Bedroom"
               />
             </div>
@@ -214,7 +214,7 @@ export default function RoomsPage() {
                 required
                 value={formData.capacity}
                 onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) as 1 | 2 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base"
               >
                 <option value={1}>1 person</option>
                 <option value={2}>2 people</option>

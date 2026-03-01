@@ -1,71 +1,62 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
+import Link from 'next/link';
 
 interface InspectionWithRelations {
   id: string;
   status: string;
   created_at: string;
-  room?: {
+  finalised_at: string | null;
+  house?: {
     id: string;
-    label: string;
+    name: string;
   };
-  tenancy?: {
-    id: string;
-    tenant?: {
-      name: string;
-      email: string;
-    };
+  created_by_profile?: {
+    name: string;
   };
 }
 
-interface MoveOutIntentionWithRelations {
-  id: string;
-  tenancy_id: string;
-  planned_move_out_date: string;
-  notes?: string;
-  tenancy?: {
-    id: string;
-    status: string;
-    room?: {
-      id: string;
-      label: string;
-    };
-    tenant?: {
-      name: string;
-      email: string;
-    };
-  };
-}
-
-export default function InspectionsPage() {
-  const router = useRouter();
+export default function CoordinatorInspectionsPage() {
   const [inspections, setInspections] = useState<InspectionWithRelations[]>([]);
-  const [pendingIntentions, setPendingIntentions] = useState<MoveOutIntentionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isSupabaseConfigured()) {
-      fetchInspections();
-      fetchPendingIntentions();
-    } else {
-      setLoading(false);
-    }
+    fetchInspections();
   }, []);
 
   async function fetchInspections() {
-    if (!supabase) return;
+    const supabase = createClient();
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // First get the houses this coordinator is assigned to
+      const { data: coordinatorHouses, error: hcError } = await supabase
+        .from('house_coordinators')
+        .select('house_id')
+        .eq('user_id', user.id);
+
+      if (hcError) throw hcError;
+
+      const houseIds = coordinatorHouses?.map(hc => hc.house_id) || [];
+      
+      if (houseIds.length === 0) {
+        setInspections([]);
+        return;
+      }
+
+      // Get inspections only for houses this coordinator manages
       const { data, error } = await supabase
         .from('inspections')
         .select(`
           *,
-          room:rooms(id, label),
-          tenancy:tenancies(id, tenant:profiles!tenant_user_id(name, email))
+          house:houses(id, name),
+          created_by_profile:profiles!created_by(name)
         `)
+        .in('house_id', houseIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -77,77 +68,12 @@ export default function InspectionsPage() {
     }
   }
 
-  async function fetchPendingIntentions() {
-    if (!supabase) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('move_out_intentions')
-        .select(`
-          *,
-          tenancy:tenancies(
-            id,
-            status,
-            room:rooms(id, label),
-            tenant:profiles!tenant_user_id(name, email)
-          )
-        `)
-        .order('submitted_at', { ascending: false });
-
-      if (error) throw error;
-      setPendingIntentions(data || []);
-    } catch (err) {
-      console.error('Error fetching pending intentions:', err);
-    }
-  }
-
-  async function handleCreateInspection(intentionId: string, tenancyId: string, roomId: string) {
-    if (!supabase) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('Please sign in to create inspections');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('inspections')
-        .insert([{
-          tenancy_id: tenancyId,
-          room_id: roomId,
-          created_by: user.id,
-          status: 'DRAFT',
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update tenancy status
-      await supabase
-        .from('tenancies')
-        .update({ status: 'MOVE_OUT_INSPECTION_DRAFT' })
-        .eq('id', tenancyId);
-
-      alert('Inspection created successfully');
-      router.push(`/coordinator/inspections/${data.id}`);
-    } catch (err) {
-      console.error('Error creating inspection:', err);
-      const message = err instanceof Error ? err.message : 'Error creating inspection';
-      alert(message);
-    }
-  }
-
-  if (!isSupabaseConfigured()) {
-    return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
-        <h2 className="text-xl font-bold text-red-900 mb-2">Supabase Not Configured</h2>
-        <p className="text-red-800">
-          Please configure your Supabase credentials in <code className="bg-red-100 px-1 rounded">.env.local</code> to use this application.
-        </p>
-      </div>
-    );
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-AU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 
   if (loading) {
@@ -156,138 +82,88 @@ export default function InspectionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Inspections</h1>
-
-      {/* Pending Move-Out Intentions */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-          Pending Move-Out Intentions
-        </h2>
-        {pendingIntentions.length === 0 ? (
-          <p className="text-gray-500">No pending move-out intentions.</p>
-        ) : (
-          <div className="space-y-4">
-            {pendingIntentions.map((intention) => (
-              <div
-                key={intention.id}
-                className="border border-gray-200 rounded-lg p-4 hover:border-green-500 transition"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {intention.tenancy?.tenant?.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Room: {intention.tenancy?.room?.label}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Planned move-out: {new Date(intention.planned_move_out_date).toLocaleDateString()}
-                    </p>
-                    {intention.notes && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Notes: {intention.notes}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const roomId = intention.tenancy?.room?.id;
-                      if (roomId) {
-                        handleCreateInspection(
-                          intention.id,
-                          intention.tenancy_id,
-                          roomId
-                        );
-                      }
-                    }}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                    disabled={!intention.tenancy?.room?.id}
-                  >
-                    Create Inspection
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">House Inspections</h1>
       </div>
 
-      {/* All Inspections */}
+      {/* Inspections Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900">All Inspections</h2>
+          <h2 className="text-xl font-semibold text-gray-900">All Inspections</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Room
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tenant
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {inspections.length === 0 ? (
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                  No inspections yet. Create an inspection from a move-out intention above.
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  House
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ) : (
-              inspections.map((inspection) => (
-                <tr key={inspection.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {inspection.room?.label}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {inspection.tenancy?.tenant?.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {inspection.tenancy?.tenant?.email}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        inspection.status === 'FINAL'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {inspection.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(inspection.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => router.push(`/coordinator/inspections/${inspection.id}`)}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      {inspection.status === 'FINAL' ? 'View' : 'Edit'}
-                    </button>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {inspections.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    No inspections found for your assigned houses.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                inspections.map((inspection) => (
+                  <tr key={inspection.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {formatDate(inspection.finalised_at || inspection.created_at)}
+                      </div>
+                      {inspection.finalised_at && (
+                        <div className="text-xs text-gray-500">Finalised</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {inspection.house?.name || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          inspection.status === 'FINAL'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {inspection.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {inspection.created_by_profile?.name || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <Link
+                        href={`/coordinator/inspections/${inspection.id}`}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        {inspection.status === 'FINAL' ? 'View' : 'Edit'}
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

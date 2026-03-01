@@ -38,7 +38,7 @@ export async function GET(
     
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, role')
+      .select('id, roles')
       .eq('id', user.id)
       .single();
 
@@ -49,8 +49,10 @@ export async function GET(
       );
     }
 
+    const userRoles: string[] = profile.roles || [];
+
     // Check if user is COORDINATOR or ADMIN
-    if (profile.role !== 'COORDINATOR' && profile.role !== 'ADMIN') {
+    if (!userRoles.includes('COORDINATOR') && !userRoles.includes('ADMIN')) {
       return NextResponse.json(
         { error: 'Access denied. Only coordinators and admins can view move-out photos.' },
         { status: 403 }
@@ -76,8 +78,8 @@ export async function GET(
       );
     }
 
-    // If user is COORDINATOR, verify they're assigned to this house
-    if (profile.role === 'COORDINATOR') {
+    // If user is COORDINATOR (and not ADMIN), verify they're assigned to this house
+    if (userRoles.includes('COORDINATOR') && !userRoles.includes('ADMIN')) {
       // Get the tenancy to find the house
       const { data: tenancy } = await supabaseAdmin
         .from('tenancies')

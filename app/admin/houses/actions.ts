@@ -117,3 +117,61 @@ export async function deleteHouse(id: string) {
     return { error: message };
   }
 }
+
+export async function createHouseWithRooms(
+  houseData: { name: string; address: string },
+  rooms: { label: string; capacity: 1 | 2 }[]
+) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Create house
+    const { data: house, error: houseError } = await supabaseAdmin
+      .from('houses')
+      .insert([houseData])
+      .select()
+      .single();
+
+    if (houseError) {
+      console.error('Error creating house:', houseError);
+      return { data: null, error: houseError.message };
+    }
+
+    // Create rooms if any
+    if (rooms.length > 0) {
+      const roomsToInsert = rooms
+        .filter(r => r.label.trim() !== '')
+        .map(r => ({
+          house_id: house.id,
+          label: r.label,
+          capacity: r.capacity
+        }));
+
+      if (roomsToInsert.length > 0) {
+        const { error: roomsError } = await supabaseAdmin
+          .from('rooms')
+          .insert(roomsToInsert);
+
+        if (roomsError) {
+          console.error('Error creating rooms:', roomsError);
+          // House was created but rooms failed - return partial success
+          return { 
+            data: house, 
+            error: `House created but rooms failed: ${roomsError.message}`,
+            roomsCreated: 0
+          };
+        }
+      }
+    }
+
+    return { 
+      data: house, 
+      error: null,
+      roomsCreated: rooms.filter(r => r.label.trim() !== '').length
+    };
+  } catch (err) {
+    console.error('Unexpected error in createHouseWithRooms:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
+  }
+}

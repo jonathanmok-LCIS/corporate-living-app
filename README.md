@@ -2,50 +2,10 @@
 
 A web application for managing move-in and move-out processes in corporate living houses. Built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
-## ⚡ Super Quick Start
+## Documentation
 
-**Just want to get it running?** → **[QUICK_START.md](./QUICK_START.md)** ← Start here!
-
-**Having errors?** → **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** ← Common issues solved!
-
-**Scripts not found?** → **[SCRIPTS_NOT_FOUND.md](./SCRIPTS_NOT_FOUND.md)** ← Need to `git pull`!
-
----
-
-## 🔄 Keep Your Repository Updated!
-
-This project is actively being developed. Before running any commands, make sure you have the latest version:
-
-```bash
-# Pull the latest changes
-git pull
-
-# Then proceed with setup
-npm install
-npm run dev
-```
-
-**If you see "scripts not found" errors**, your repository is outdated. Run `git pull` first!
-
-## 🚀 Full Documentation
-
-**New to this project?** Choose your path:
-
-1. **[QUICK_START.md](./QUICK_START.md)** - 🆕 Get running in 5 minutes!
-2. **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - 🆕 Fix common errors (like "Could not read package.json")
-3. **[ENV_SETUP.md](./ENV_SETUP.md)** - Beginner's guide to environment variables
-4. **[WHATS_NEXT.md](./WHATS_NEXT.md)** - Quick reference for getting started
-5. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Detailed 3-day implementation guide
-6. **[SETUP.md](./SETUP.md)** - Complete setup instructions
-7. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
-
-## 📊 Project Status
-
-- **Completion**: 85% complete, ready for production setup
-- **Core Features**: ✅ All implemented
-- **Database**: ✅ Schema and RLS policies complete
-- **UI/UX**: ✅ All portals functional
-- **Next Steps**: Email integration, storage configuration, testing
+- **[SETUP.md](./SETUP.md)** - Complete setup instructions
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
 
 ## Features
 
@@ -70,19 +30,7 @@ npm run dev
 
 ## Setup Instructions
 
-> **⚠️ CRITICAL: Make sure you're in the project directory!**
-> 
-> Before running any commands below, navigate to the project directory:
-> ```bash
-> cd corporate-living-app
-> ```
-> 
-> Verify you're in the right place by checking for `package.json`:
-> ```bash
-> ls package.json  # Should show: package.json (not an error)
-> ```
-> 
-> **Common mistake:** Running `npm run dev` from your home directory will fail with "Could not read package.json" error. See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for help.
+> Before running any commands, make sure you're in the project directory where `package.json` is located.
 
 ### 1. Clone the Repository
 
@@ -99,36 +47,15 @@ npm install
 
 ### 3. Set Up Environment Variables
 
-**New to environment variables?** 📚 See [ENV_SETUP.md](./ENV_SETUP.md) for a detailed beginner-friendly guide!
-
-**Quick Setup:**
-
 1. Create a new project at [supabase.com](https://supabase.com)
-2. Once your project is ready, go to **Settings** → **API** to find your credentials
-3. **Choose ONE of these methods:**
-
-   **Option A: Interactive Setup (Recommended for beginners)** 🚀
+2. Copy the environment template:
    ```bash
-   # Run the setup helper script
-   ./scripts/setup-env.sh
-   ```
-   This will guide you through the process step-by-step!
-
-   **Option B: Manual Setup**
-   ```bash
-   # Copy the template
    cp .env.example .env.local
-   
-   # Edit .env.local and replace the placeholders with your actual values
-   # The file has detailed comments explaining each variable
    ```
-
-4. Get your credentials from Supabase:
+3. Edit `.env.local` with your Supabase credentials:
    - **Project URL**: Settings → API → Project URL
    - **Anon Key**: Settings → API → anon public key
    - **Service Role Key**: Settings → API → service_role key (keep secret!)
-
-**Need help?** The `.env.example` file has detailed comments for each variable!
 
 ### 4. Run Database Migrations
 
@@ -250,9 +177,10 @@ corporate-living-app/
 │   └── layout.tsx      # Root layout
 ├── components/         # Reusable React components
 ├── lib/
-│   ├── supabase.ts     # Supabase client (client-side)
-│   ├── supabase-server.ts  # Supabase client (server-side)
-│   └── types.ts        # TypeScript type definitions
+│   ├── supabase-browser.ts   # Supabase client (client-side)
+│   ├── supabase-server.ts    # Supabase client (server-side)
+│   ├── imageCompression.ts   # Image compression utilities
+│   └── types.ts              # TypeScript type definitions
 ├── supabase/
 │   └── migrations/     # Database migration files
 └── public/             # Static assets

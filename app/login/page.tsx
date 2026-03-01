@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 
 export default function LoginPage() {
@@ -33,10 +33,10 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // Get user role from profile
+      // Get user roles from profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role')
+        .select('roles')
         .eq('id', data.user.id)
         .single();
 
@@ -48,11 +48,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect based on role
-      const role = profile?.role;
-      if (role === 'ADMIN') {
+      // Redirect based on roles (priority: ADMIN > COORDINATOR > TENANT)
+      const roles: string[] = profile?.roles || [];
+      if (roles.includes('ADMIN')) {
         router.push('/admin');
-      } else if (role === 'COORDINATOR') {
+      } else if (roles.includes('COORDINATOR')) {
         router.push('/coordinator');
       } else {
         router.push('/tenant');
@@ -82,11 +82,6 @@ export default function LoginPage() {
             <li>Add your Supabase credentials</li>
             <li>Restart the development server</li>
           </ol>
-          <div className="mt-4">
-            <Link href="/" className="text-red-600 hover:text-red-800 underline">
-              ← Back to Home
-            </Link>
-          </div>
         </div>
       </div>
     );
@@ -94,9 +89,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 sm:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             Corporate Living
           </h1>
           <p className="text-gray-600">Sign in to your account</p>
@@ -118,7 +113,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500 text-base"
               placeholder="you@example.com"
               disabled={loading}
             />
@@ -133,33 +128,32 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="••••••••"
+              className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500 text-base"
+              placeholder="Enter your password"
               disabled={loading}
             />
+            <div className="mt-2 text-right">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors text-base font-medium"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm">
-          <Link href="/" className="text-blue-600 hover:text-blue-800">
-            ← Back to Home
-          </Link>
-        </div>
-
         <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
-            Need help? Contact your administrator or check the{' '}
-            <a href="/docs" className="text-blue-600 hover:text-blue-800">
-              documentation
-            </a>
+          <p className="text-sm text-gray-600 text-center">
+            Need help? Contact your house coordinator or administrator.
           </p>
         </div>
       </div>

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Profile, UserRole } from '@/lib/types';
-import { createUser } from './actions';
+import { createUser, updateUser, deleteUser } from './actions';
 
 interface HouseCoordinator {
   house?: {
@@ -30,11 +30,12 @@ export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     name: '',
     password: '',
-    role: 'TENANT' as UserRole,
+    roles: ['TENANT'] as UserRole[],
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -49,7 +50,7 @@ export default function UsersPage() {
   }, []);
 
   async function fetchUsers() {
-    if (!supabase) return;
+    const supabase = createClient();
     
     try {
       const { data, error } = await supabase
@@ -88,23 +89,42 @@ export default function UsersPage() {
     
     try {
       // Validate form
-      if (!formData.email || !formData.name || !formData.password) {
+      if (!formData.name) {
+        throw new Error('Please fill in the name field');
+      }
+
+      if (!editingId && (!formData.email || !formData.password)) {
         throw new Error('Please fill in all required fields');
       }
 
-      if (formData.password.length < 6) {
+      if (!editingId && formData.password.length < 6) {
         throw new Error('Password must be at least 6 characters');
       }
 
-      // Call server action to create user
-      const result = await createUser(formData);
+      if (formData.roles.length === 0) {
+        throw new Error('Please select at least one role');
+      }
+
+      let result;
+      if (editingId) {
+        // Update existing user
+        result = await updateUser({
+          id: editingId,
+          name: formData.name,
+          roles: formData.roles,
+        });
+      } else {
+        // Create new user
+        result = await createUser(formData);
+      }
       
       if (result.error) {
         throw new Error(result.error);
       }
 
-      setSuccess('User created successfully!');
-      setFormData({ email: '', name: '', password: '', role: 'TENANT' });
+      setSuccess(editingId ? 'User updated successfully!' : 'User created successfully!');
+      setFormData({ email: '', name: '', password: '', roles: ['TENANT'] });
+      setEditingId(null);
       setShowForm(false);
       
       // Refresh users list
@@ -113,17 +133,63 @@ export default function UsersPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('Error creating user:', err);
-      setError(err instanceof Error ? err.message : 'Error creating user. Please try again.');
+      console.error('Error saving user:', err);
+      setError(err instanceof Error ? err.message : 'Error saving user. Please try again.');
     } finally {
       setSubmitting(false);
     }
   }
 
   function handleCancel() {
-    setFormData({ email: '', name: '', password: '', role: 'TENANT' });
+    setFormData({ email: '', name: '', password: '', roles: ['TENANT'] });
+    setEditingId(null);
     setShowForm(false);
     setError(null);
+  }
+
+  function handleEdit(user: Profile) {
+    setFormData({
+      email: user.email,
+      name: user.name,
+      password: '',
+      roles: user.roles || ['TENANT'],
+    });
+    setEditingId(user.id);
+    setShowForm(true);
+    setError(null);
+  }
+
+  async function handleDelete(userId: string, userName: string) {
+    if (!confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const result = await deleteUser(userId);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      setSuccess('User deleted successfully!');
+      await fetchUsers();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError(err instanceof Error ? err.message : 'Error deleting user. Please try again.');
+    }
+  }
+
+  function toggleRole(role: UserRole) {
+    setFormData(prev => {
+      const currentRoles = prev.roles;
+      if (currentRoles.includes(role)) {
+        // Remove role (but keep at least one)
+        const newRoles = currentRoles.filter(r => r !== role);
+        return { ...prev, roles: newRoles.length > 0 ? newRoles : currentRoles };
+      } else {
+        // Add role
+        return { ...prev, roles: [...currentRoles, role] };
+      }
+    });
   }
 
   if (!isSupabaseConfigured()) {
@@ -167,25 +233,30 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Create User Form Modal */}
+      {/* Create/Edit User Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Create New User</h2>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              {editingId ? 'Edit User' : 'Create New User'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Email *
+                  Email {!editingId && '*'}
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
                   placeholder="user@example.com"
-                  required
-                  disabled={submitting}
+                  required={!editingId}
+                  disabled={submitting || !!editingId}
                 />
+                {editingId && (
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                )}
               </div>
 
               <div>
@@ -196,7 +267,7 @@ export default function UsersPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="John Doe"
                   required
                   disabled={submitting}
@@ -205,36 +276,69 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Password *
+                  Password {!editingId && '*'}
                 </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                  disabled={submitting}
-                />
-                <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                {editingId ? (
+                  <p className="text-sm text-gray-500">Password change not supported in edit mode. User can reset via login page.</p>
+                ) : (
+                  <>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Minimum 6 characters"
+                      required
+                      minLength={6}
+                      disabled={submitting}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                  </>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Role *
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Roles * <span className="text-gray-500 font-normal">(select one or more)</span>
                 </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                  disabled={submitting}
-                >
-                  <option value="TENANT">Tenant</option>
-                  <option value="COORDINATOR">Coordinator</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
+                <div className="space-y-2">
+                  {(['ADMIN', 'COORDINATOR', 'TENANT'] as UserRole[]).map((role) => (
+                    <label
+                      key={role}
+                      className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData.roles.includes(role)
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.roles.includes(role)}
+                        onChange={() => toggleRole(role)}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        disabled={submitting}
+                      />
+                      <span className="ml-3">
+                        <span className={`inline-flex text-sm font-medium ${
+                          role === 'ADMIN'
+                            ? 'text-purple-800'
+                            : role === 'COORDINATOR'
+                            ? 'text-blue-800'
+                            : 'text-green-800'
+                        }`}>
+                          {role === 'ADMIN' && 'Admin'}
+                          {role === 'COORDINATOR' && 'Coordinator'}
+                          {role === 'TENANT' && 'Tenant'}
+                        </span>
+                        <span className="block text-xs text-gray-500">
+                          {role === 'ADMIN' && 'Full system access, manage users and houses'}
+                          {role === 'COORDINATOR' && 'Manage inspections and assigned houses'}
+                          {role === 'TENANT' && 'Submit move-out intentions and sign documents'}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -243,7 +347,7 @@ export default function UsersPage() {
                   className="flex-1 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors disabled:bg-purple-300 disabled:cursor-not-allowed"
                   disabled={submitting}
                 >
-                  {submitting ? 'Creating...' : 'Create User'}
+                  {submitting ? (editingId ? 'Updating...' : 'Creating...') : (editingId ? 'Update User' : 'Create User')}
                 </button>
                 <button
                   type="button"
@@ -272,7 +376,7 @@ export default function UsersPage() {
                 Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Role
+                Roles
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                 House Assignment
@@ -280,12 +384,15 @@ export default function UsersPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                 Created
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                   No users found. Create your first user to get started.
                 </td>
               </tr>
@@ -293,14 +400,14 @@ export default function UsersPage() {
               users.map((user) => {
                 const userWithRelations = user as UserWithRelations;
 
-                // Get house assignments based on role
+                // Get house assignments based on roles
                 let houseAssignments: string[] = [];
                 
-                if (userWithRelations.role === 'COORDINATOR' && userWithRelations.house_coordinators) {
+                if (userWithRelations.roles?.includes('COORDINATOR') && userWithRelations.house_coordinators) {
                   houseAssignments = userWithRelations.house_coordinators
                     .map((hc) => hc.house?.name)
                     .filter((name): name is string => name !== undefined);
-                } else if ((userWithRelations.role === 'TENANT' || userWithRelations.role === 'COORDINATOR') && userWithRelations.tenancies) {
+                } else if ((userWithRelations.roles?.includes('TENANT') || userWithRelations.roles?.includes('COORDINATOR')) && userWithRelations.tenancies) {
                   // Get active tenancies only
                   const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'OCCUPIED');
                   houseAssignments = activeTenancies
@@ -321,15 +428,22 @@ export default function UsersPage() {
                       <div className="text-sm text-gray-900">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.role === 'ADMIN' 
-                          ? 'bg-purple-100 text-purple-800'
-                          : user.role === 'COORDINATOR'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {user.role}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(user.roles || []).map((role) => (
+                          <span
+                            key={role}
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              role === 'ADMIN'
+                                ? 'bg-purple-100 text-purple-800'
+                                : role === 'COORDINATOR'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}
+                          >
+                            {role}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
@@ -346,6 +460,20 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(user)}
+                        className="text-purple-600 hover:text-purple-900 mr-4"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user.id, user.name)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );
