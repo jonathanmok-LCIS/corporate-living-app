@@ -86,6 +86,7 @@ export async function createUser(data: CreateUserData) {
         email: data.email,
         name: data.name,
         roles: data.roles,
+        force_password_reset: true,
       }]);
 
     if (profileError) {

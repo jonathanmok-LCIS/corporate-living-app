@@ -36,7 +36,7 @@ export default function LoginPage() {
       // Get user roles from profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('roles')
+        .select('roles, force_password_reset')
         .eq('id', data.user.id)
         .single();
 
@@ -44,6 +44,13 @@ export default function LoginPage() {
         console.error('Error fetching profile:', profileError);
         // Default to tenant if no profile found
         router.push('/tenant');
+        router.refresh();
+        return;
+      }
+
+      // Check if user must change password on first login
+      if (profile?.force_password_reset) {
+        router.push('/change-password');
         router.refresh();
         return;
       }

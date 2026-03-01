@@ -17,6 +17,7 @@ export interface Profile {
   email: string;
   name: string;
   roles: UserRole[];  // Changed from single role to array of roles
+  force_password_reset?: boolean;
   created_at: string;
   updated_at: string;
 }
