@@ -71,7 +71,7 @@ export default function TenanciesPage() {
     try {
       const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select('*, rental_price')
         .eq('active', true)
         .order('label');
 
@@ -238,7 +238,15 @@ export default function TenanciesPage() {
               <select
                 required
                 value={formData.room_id}
-                onChange={(e) => setFormData({ ...formData, room_id: e.target.value })}
+                onChange={(e) => {
+                  const roomId = e.target.value;
+                  const room = rooms.find(r => r.id === roomId);
+                  setFormData({
+                    ...formData,
+                    room_id: roomId,
+                    rental_price: room?.rental_price != null ? String(room.rental_price) : '',
+                  });
+                }}
                 className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
               >
                 <option value="">Select a room...</option>

@@ -18,17 +18,19 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-purple-600 text-white shadow-lg relative">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4 md:space-x-8">
-              <Link href="/admin" className="text-lg md:text-xl font-bold hover:text-purple-100">
-                Corporate Living
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-gradient-to-r from-purple-700 via-purple-600 to-purple-700 text-white shadow-md relative border-b border-purple-800/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center space-x-3 md:space-x-6">
+              <Link href="/admin" className="flex items-center space-x-2 text-lg font-semibold tracking-tight hover:text-purple-100 transition-colors">
+                <span className="hidden sm:inline">🏢</span>
+                <span>Corporate Living</span>
               </Link>
+              <div className="hidden md:block w-px h-6 bg-purple-400/40" />
               <MobileNav links={NAV_LINKS} colorScheme="purple" />
             </div>
-            <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="flex items-center space-x-2 md:space-x-3">
               <RoleSwitcher currentRole="ADMIN" />
               <LogoutButton variant="admin" />
             </div>

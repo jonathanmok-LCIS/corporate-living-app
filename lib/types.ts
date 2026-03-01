@@ -45,6 +45,7 @@ export interface Room {
   house_id: string;
   label: string;
   capacity: 1 | 2;
+  rental_price?: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;

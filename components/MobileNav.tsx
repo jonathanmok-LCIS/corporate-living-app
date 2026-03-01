@@ -16,17 +16,20 @@ interface MobileNavProps {
 const COLOR_CLASSES = {
   blue: {
     bg: 'bg-blue-600',
-    hover: 'hover:bg-blue-700',
+    hover: 'hover:bg-blue-500/30',
+    active: 'bg-blue-500/20',
     menuBg: 'bg-blue-700',
   },
   green: {
     bg: 'bg-green-600',
-    hover: 'hover:bg-green-700',
+    hover: 'hover:bg-green-500/30',
+    active: 'bg-green-500/20',
     menuBg: 'bg-green-700',
   },
   purple: {
     bg: 'bg-purple-600',
-    hover: 'hover:bg-purple-700',
+    hover: 'hover:bg-purple-500/30',
+    active: 'bg-purple-500/20',
     menuBg: 'bg-purple-700',
   },
 };
@@ -54,12 +57,12 @@ export default function MobileNav({ links, colorScheme }: MobileNavProps) {
       </button>
 
       {/* Desktop nav links */}
-      <div className="hidden md:flex space-x-4">
+      <div className="hidden md:flex space-x-1">
         {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`${colors.hover} px-3 py-2 rounded`}
+            className={`${colors.hover} px-3 py-1.5 rounded-md text-sm font-medium transition-colors`}
           >
             {link.label}
           </Link>
@@ -68,14 +71,14 @@ export default function MobileNav({ links, colorScheme }: MobileNavProps) {
 
       {/* Mobile menu dropdown */}
       {isOpen && (
-        <div className={`md:hidden absolute top-16 left-0 right-0 ${colors.menuBg} shadow-lg z-50`}>
-          <div className="px-4 py-2 space-y-1">
+        <div className={`md:hidden absolute top-14 left-0 right-0 ${colors.menuBg} shadow-lg z-50 border-t border-white/10`}>
+          <div className="px-3 py-2 space-y-0.5">
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className={`block px-3 py-3 rounded ${colors.hover} text-base`}
+                className={`block px-3 py-2.5 rounded-md ${colors.hover} text-sm font-medium transition-colors`}
               >
                 {link.label}
               </Link>

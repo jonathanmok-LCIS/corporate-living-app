@@ -1,19 +1,35 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createHouseWithRooms } from '../actions';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createHouseWithRooms, updateHouseWithRooms, fetchHouseWithRooms } from '../actions';
 
 interface RoomFormData {
+  id?: string;
   label: string;
   capacity: 1 | 2;
+  rental_price: string;
   tempId: string;
 }
 
 export default function QuickSetupPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+      <QuickSetupContent />
+    </Suspense>
+  );
+}
+
+function QuickSetupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('id');
+  const isEditMode = !!editId;
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(isEditMode);
+  const [deletedRoomIds, setDeletedRoomIds] = useState<string[]>([]);
   
   // House data
   const [houseData, setHouseData] = useState({
@@ -23,24 +39,69 @@ export default function QuickSetupPage() {
   
   // Rooms data
   const [rooms, setRooms] = useState<RoomFormData[]>([
-    { label: '', capacity: 1, tempId: '1' }
+    { label: '', capacity: 1, rental_price: '', tempId: '1' }
   ]);
+
+  // Load existing house data in edit mode
+  useEffect(() => {
+    if (editId) {
+      loadHouseData(editId);
+    }
+  }, [editId]);
+
+  async function loadHouseData(houseId: string) {
+    setInitialLoading(true);
+    try {
+      const result = await fetchHouseWithRooms(houseId);
+      if (result.error) {
+        alert('Error loading house: ' + result.error);
+        router.push('/admin/houses');
+        return;
+      }
+      if (result.house) {
+        setHouseData({
+          name: result.house.name || '',
+          address: result.house.address || '',
+        });
+      }
+      if (result.rooms && result.rooms.length > 0) {
+        setRooms(result.rooms.map((r: { id: string; label: string; capacity: 1 | 2; rental_price?: number | null }) => ({
+          id: r.id,
+          label: r.label,
+          capacity: r.capacity,
+          rental_price: r.rental_price != null ? String(r.rental_price) : '',
+          tempId: r.id,
+        })));
+      }
+    } catch (err) {
+      console.error('Error loading house:', err);
+      alert('Error loading house data.');
+      router.push('/admin/houses');
+    } finally {
+      setInitialLoading(false);
+    }
+  }
 
   function addRoom() {
     setRooms([...rooms, { 
       label: '', 
       capacity: 1, 
+      rental_price: '',
       tempId: Date.now().toString() 
     }]);
   }
 
   function removeRoom(tempId: string) {
     if (rooms.length > 1) {
+      const room = rooms.find(r => r.tempId === tempId);
+      if (room?.id) {
+        setDeletedRoomIds([...deletedRoomIds, room.id]);
+      }
       setRooms(rooms.filter(r => r.tempId !== tempId));
     }
   }
 
-  function updateRoom(tempId: string, field: keyof Omit<RoomFormData, 'tempId'>, value: string | number) {
+  function updateRoom(tempId: string, field: keyof Omit<RoomFormData, 'tempId' | 'id'>, value: string | number) {
     setRooms(rooms.map(r => 
       r.tempId === tempId ? { ...r, [field]: value } : r
     ));
@@ -52,6 +113,7 @@ export default function QuickSetupPage() {
       newRooms.push({
         label: `Room ${rooms.length + i + 1}`,
         capacity: 1,
+        rental_price: '',
         tempId: `${Date.now()}-${i}`
       });
     }
@@ -62,27 +124,41 @@ export default function QuickSetupPage() {
     setLoading(true);
     
     try {
-      // Use server action to create house and rooms
       const roomsData = rooms
         .filter(r => r.label.trim() !== '')
-        .map(r => ({ label: r.label, capacity: r.capacity }));
+        .map(r => ({
+          id: r.id,
+          label: r.label,
+          capacity: r.capacity,
+          rental_price: r.rental_price ? parseFloat(r.rental_price) : null,
+        }));
 
-      const result = await createHouseWithRooms(houseData, roomsData);
-
-      if (result.error) {
-        throw new Error(result.error);
+      if (isEditMode && editId) {
+        const result = await updateHouseWithRooms(editId, houseData, roomsData, deletedRoomIds);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        alert(`Successfully updated "${result.data!.name}"!`);
+        router.push('/admin/houses');
+      } else {
+        const result = await createHouseWithRooms(houseData, roomsData);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        alert(`Successfully created "${result.data!.name}" with ${result.roomsCreated} room(s)!`);
+        router.push('/admin/houses');
       }
-
-      // Success!
-      alert(`Successfully created "${result.data!.name}" with ${result.roomsCreated} room(s)!`);
-      router.push(`/admin/houses/${result.data!.id}/rooms`);
     } catch (err) {
       console.error('Error in quick setup:', err);
-      const message = err instanceof Error ? err.message : 'Error creating house and rooms. Please try again.';
+      const message = err instanceof Error ? err.message : 'Error saving house and rooms. Please try again.';
       alert(message);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (initialLoading) {
+    return <div className="text-center py-8">Loading house data...</div>;
   }
 
   return (
@@ -95,8 +171,14 @@ export default function QuickSetupPage() {
         >
           ← Back to Houses
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">Quick Setup: House + Rooms</h1>
-        <p className="text-gray-600 mt-2">Create a new house and add multiple rooms in one go</p>
+        <h1 className="text-3xl font-bold text-gray-900">
+          {isEditMode ? 'Edit House' : 'Add House'}
+        </h1>
+        <p className="text-gray-600 mt-2">
+          {isEditMode
+            ? 'Update house details and manage rooms'
+            : 'Create a new house and add rooms in one go'}
+        </p>
       </div>
 
       {/* Progress Indicator */}
@@ -106,7 +188,7 @@ export default function QuickSetupPage() {
             Step 1: House Details
           </div>
           <div className={`flex-1 text-center ${step >= 2 ? 'text-purple-600 font-semibold' : 'text-gray-400'}`}>
-            Step 2: Add Rooms
+            Step 2: Rooms
           </div>
           <div className={`flex-1 text-center ${step >= 3 ? 'text-purple-600 font-semibold' : 'text-gray-400'}`}>
             Step 3: Review
@@ -162,7 +244,7 @@ export default function QuickSetupPage() {
                 disabled={!houseData.name.trim()}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Next: Add Rooms →
+                Next: Rooms →
               </button>
             </div>
           </div>
@@ -174,7 +256,9 @@ export default function QuickSetupPage() {
         <div className="space-y-4">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Add Rooms to {houseData.name}</h2>
+              <h2 className="text-xl font-semibold">
+                {isEditMode ? `Rooms in ${houseData.name}` : `Add Rooms to ${houseData.name}`}
+              </h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => addMultipleRooms(3)}
@@ -197,7 +281,7 @@ export default function QuickSetupPage() {
                   <div className="flex-shrink-0 w-8 h-8 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-semibold">
                     {index + 1}
                   </div>
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-900 mb-1">
                         Room Label *
@@ -223,6 +307,20 @@ export default function QuickSetupPage() {
                         <option value={1}>1 person</option>
                         <option value={2}>2 people</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-900 mb-1">
+                        Rental Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={room.rental_price}
+                        onChange={(e) => updateRoom(room.tempId, 'rental_price', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder:text-gray-500"
+                        placeholder="0.00"
+                      />
                     </div>
                   </div>
                   {rooms.length > 1 && (
@@ -270,7 +368,7 @@ export default function QuickSetupPage() {
       {step === 3 && (
         <div className="space-y-4">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Review Your Setup</h2>
+            <h2 className="text-xl font-semibold mb-4">Review Your {isEditMode ? 'Changes' : 'Setup'}</h2>
             
             <div className="space-y-6">
               {/* House Summary */}
@@ -298,6 +396,9 @@ export default function QuickSetupPage() {
                           (Capacity: {room.capacity} {room.capacity === 1 ? 'person' : 'people'})
                         </span>
                       </div>
+                      <div className="text-sm text-gray-600">
+                        {room.rental_price ? `$${parseFloat(room.rental_price).toFixed(2)}` : 'No price set'}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -306,9 +407,20 @@ export default function QuickSetupPage() {
 
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
               <p className="text-sm text-blue-800">
-                ✓ House and {rooms.filter(r => r.label.trim() !== '').length} room(s) will be created
+                {isEditMode
+                  ? `✓ House and ${rooms.filter(r => r.label.trim() !== '').length} room(s) will be updated`
+                  : `✓ House and ${rooms.filter(r => r.label.trim() !== '').length} room(s) will be created`
+                }
               </p>
             </div>
+
+            {deletedRoomIds.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-sm text-red-800">
+                  ⚠ {deletedRoomIds.length} room(s) will be removed
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between">
@@ -330,11 +442,11 @@ export default function QuickSetupPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating...
+                  {isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : (
                 <>
-                  ✓ Create House & Rooms
+                  ✓ {isEditMode ? 'Save Changes' : 'Create House & Rooms'}
                 </>
               )}
             </button>
