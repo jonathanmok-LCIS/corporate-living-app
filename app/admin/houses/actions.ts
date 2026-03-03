@@ -126,10 +126,25 @@ export async function createHouseWithRooms(
   try {
     const supabaseAdmin = getAdminClient();
 
-    // Create house
+    // 1. Check for duplicate house name + address
+    const { count: dupCount, error: dupError } = await supabaseAdmin
+      .from('houses')
+      .select('id', { count: 'exact', head: true })
+      .ilike('name', houseData.name.trim())
+      .ilike('address', houseData.address.trim())
+      .eq('is_archived', false);
+
+    if (dupError) {
+      return { data: null, error: `Error checking duplicates: ${dupError.message}` };
+    }
+    if ((dupCount ?? 0) > 0) {
+      return { data: null, error: 'A house with this name and address already exists.' };
+    }
+
+    // 2. Create house
     const { data: house, error: houseError } = await supabaseAdmin
       .from('houses')
-      .insert([houseData])
+      .insert([{ name: houseData.name.trim(), address: houseData.address.trim() }])
       .select()
       .single();
 
@@ -138,38 +153,33 @@ export async function createHouseWithRooms(
       return { data: null, error: houseError.message };
     }
 
-    // Create rooms if any
-    if (rooms.length > 0) {
-      const roomsToInsert = rooms
-        .filter(r => r.label.trim() !== '')
-        .map(r => ({
-          house_id: house.id,
-          label: r.label,
-          capacity: r.capacity,
-          rental_price: r.rental_price ?? null,
-        }));
+    // 3. Create rooms (compensating transaction – rollback house on failure)
+    const roomsToInsert = rooms
+      .filter(r => r.label.trim() !== '')
+      .map(r => ({
+        house_id: house.id,
+        label: r.label.trim(),
+        capacity: r.capacity,
+        rental_price: r.rental_price ?? null,
+      }));
 
-      if (roomsToInsert.length > 0) {
-        const { error: roomsError } = await supabaseAdmin
-          .from('rooms')
-          .insert(roomsToInsert);
+    if (roomsToInsert.length > 0) {
+      const { error: roomsError } = await supabaseAdmin
+        .from('rooms')
+        .insert(roomsToInsert);
 
-        if (roomsError) {
-          console.error('Error creating rooms:', roomsError);
-          // House was created but rooms failed - return partial success
-          return { 
-            data: house, 
-            error: `House created but rooms failed: ${roomsError.message}`,
-            roomsCreated: 0
-          };
-        }
+      if (roomsError) {
+        console.error('Error creating rooms, rolling back house:', roomsError);
+        // Compensating transaction: delete the house we just created
+        await supabaseAdmin.from('houses').delete().eq('id', house.id);
+        return { data: null, error: `Failed to create rooms: ${roomsError.message}` };
       }
     }
 
     return { 
       data: house, 
       error: null,
-      roomsCreated: rooms.filter(r => r.label.trim() !== '').length
+      roomsCreated: roomsToInsert.length,
     };
   } catch (err) {
     console.error('Unexpected error in createHouseWithRooms:', err);
@@ -287,6 +297,38 @@ export async function updateHouseWithRooms(
     console.error('Unexpected error in updateHouseWithRooms:', err);
     const message = err instanceof Error ? err.message : 'Unknown error occurred';
     return { data: null, error: message };
+  }
+}
+
+/**
+ * Check for duplicate house name + address (case-insensitive).
+ * Optionally exclude a house by ID (for edit mode).
+ */
+export async function checkDuplicateHouse(
+  name: string,
+  address: string,
+  excludeId?: string
+): Promise<{ isDuplicate: boolean; error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    let query = supabaseAdmin
+      .from('houses')
+      .select('id', { count: 'exact', head: true })
+      .ilike('name', name.trim())
+      .ilike('address', address.trim())
+      .eq('is_archived', false);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { count, error } = await query;
+    if (error) return { isDuplicate: false, error: error.message };
+    return { isDuplicate: (count ?? 0) > 0, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { isDuplicate: false, error: message };
   }
 }
 
