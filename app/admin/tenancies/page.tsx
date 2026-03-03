@@ -89,7 +89,7 @@ export default function TenanciesPage() {
       const { data, error } = await supabase
         .from('houses')
         .select('*')
-        .eq('active', true)
+        .eq('is_archived', false)
         .order('name');
 
       if (error) throw error;

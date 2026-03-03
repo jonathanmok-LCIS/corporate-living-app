@@ -9,6 +9,7 @@ interface HouseWithInspection {
   name: string;
   address: string;
   active: boolean;
+  is_archived: boolean;
   lastInspectionDate?: string | null;
   lastInspectionId?: string | null;
 }
@@ -29,10 +30,11 @@ export default function HousesPage() {
     const supabase = createClient();
     
     try {
-      // Fetch houses
+      // Fetch only non-archived houses
       const { data: housesData, error: housesError } = await supabase
         .from('houses')
         .select('*')
+        .eq('is_archived', false)
         .order('created_at', { ascending: false });
 
       if (housesError) throw housesError;
@@ -72,22 +74,6 @@ export default function HousesPage() {
     }
   }
 
-  async function handleToggleActive(id: string, active: boolean) {
-    const supabase = createClient();
-    
-    try {
-      const { error } = await supabase
-        .from('houses')
-        .update({ active: !active })
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchHouses();
-    } catch (error) {
-      console.error('Error updating house:', error);
-    }
-  }
-
   if (!isSupabaseConfigured()) {
     return (
       <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
@@ -107,15 +93,26 @@ export default function HousesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Houses</h1>
-        <a
-          href="/admin/houses/quick-setup"
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add House
-        </a>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/houses/archived"
+            className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 flex items-center gap-2 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            View Archived
+          </Link>
+          <a
+            href="/admin/houses/quick-setup"
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add House
+          </a>
+        </div>
       </div>
 
       {/* Empty State Banner */}
@@ -151,9 +148,6 @@ export default function HousesPage() {
                 Last Inspection
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -161,7 +155,7 @@ export default function HousesPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {houses.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
                   No houses found. Add your first house to get started.
                 </td>
               </tr>
@@ -197,17 +191,6 @@ export default function HousesPage() {
                       <span className="text-sm text-gray-400">No inspections</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        house.active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {house.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <a
                       href={`/admin/houses/quick-setup?id=${house.id}`}
@@ -215,12 +198,6 @@ export default function HousesPage() {
                     >
                       Edit
                     </a>
-                    <button
-                      onClick={() => handleToggleActive(house.id, house.active)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      {house.active ? 'Deactivate' : 'Activate'}
-                    </button>
                     <a
                       href={`/admin/houses/${house.id}/rooms`}
                       className="text-blue-600 hover:text-blue-900"

@@ -84,7 +84,7 @@ export default function AdminInspectionsPage() {
       const { data, error } = await supabase
         .from('houses')
         .select('id, name')
-        .eq('active', true)
+        .eq('is_archived', false)
         .order('name');
 
       if (error) throw error;

@@ -26,6 +26,7 @@ export async function fetchHousesAdmin() {
     const { data: houses, error } = await supabaseAdmin
       .from('houses')
       .select('*')
+      .eq('is_archived', false)
       .order('name');
 
     if (error) {
@@ -286,5 +287,104 @@ export async function updateHouseWithRooms(
     console.error('Unexpected error in updateHouseWithRooms:', err);
     const message = err instanceof Error ? err.message : 'Unknown error occurred';
     return { data: null, error: message };
+  }
+}
+
+/**
+ * Check if a house can be safely archived.
+ * Returns blockers if active tenancies, pending move-outs, or pending inspections exist.
+ */
+export async function checkArchiveEligibility(houseId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Get all rooms for this house
+    const { data: rooms } = await supabaseAdmin
+      .from('rooms')
+      .select('id')
+      .eq('house_id', houseId);
+
+    const roomIds = (rooms || []).map(r => r.id);
+    const blockers: string[] = [];
+
+    if (roomIds.length > 0) {
+      // Check active tenancies
+      const { count: activeTenancies } = await supabaseAdmin
+        .from('tenancies')
+        .select('id', { count: 'exact', head: true })
+        .in('room_id', roomIds)
+        .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
+
+      if (activeTenancies && activeTenancies > 0) {
+        blockers.push(`${activeTenancies} active tenancies`);
+      }
+
+      // Check pending move-out intentions (via tenancies)
+      const { data: tenancyIds } = await supabaseAdmin
+        .from('tenancies')
+        .select('id')
+        .in('room_id', roomIds)
+        .neq('status', 'COMPLETED');
+
+      if (tenancyIds && tenancyIds.length > 0) {
+        const { count: pendingIntentions } = await supabaseAdmin
+          .from('move_out_intentions')
+          .select('id', { count: 'exact', head: true })
+          .in('tenancy_id', tenancyIds.map(t => t.id))
+          .eq('sign_off_status', 'PENDING');
+
+        if (pendingIntentions && pendingIntentions > 0) {
+          blockers.push(`${pendingIntentions} pending move-out requests`);
+        }
+      }
+
+      // Check pending inspections (DRAFT status)
+      const { count: draftInspections } = await supabaseAdmin
+        .from('inspections')
+        .select('id', { count: 'exact', head: true })
+        .in('room_id', roomIds)
+        .eq('status', 'DRAFT');
+
+      if (draftInspections && draftInspections > 0) {
+        blockers.push(`${draftInspections} pending inspections`);
+      }
+    }
+
+    return { canArchive: blockers.length === 0, blockers, error: null };
+  } catch (err) {
+    console.error('Error checking archive eligibility:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { canArchive: false, blockers: [], error: message };
+  }
+}
+
+/**
+ * Archive a house (soft-delete).
+ */
+export async function archiveHouse(houseId: string) {
+  try {
+    // Pre-flight check
+    const eligibility = await checkArchiveEligibility(houseId);
+    if (!eligibility.canArchive) {
+      return { error: `Cannot archive: ${eligibility.blockers.join(', ')}` };
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from('houses')
+      .update({ is_archived: true, active: false })
+      .eq('id', houseId);
+
+    if (error) {
+      console.error('Error archiving house:', error);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  } catch (err) {
+    console.error('Unexpected error in archiveHouse:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { error: message };
   }
 }

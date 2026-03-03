@@ -99,7 +99,7 @@ export default function AdminDashboard() {
         recentMoveOutsRes,
         recentInspRes,
       ] = await Promise.all([
-        supabase.from('houses').select('id', { count: 'exact', head: true }).eq('active', true),
+        supabase.from('houses').select('id', { count: 'exact', head: true }).eq('is_archived', false),
         supabase.from('rooms').select('id, house_id', { count: 'exact' }).eq('active', true),
         supabase.from('tenancies').select('id, room_id', { count: 'exact' }).in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']),
         supabase.from('move_out_intentions').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']),

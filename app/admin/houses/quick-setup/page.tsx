@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createHouseWithRooms, updateHouseWithRooms, fetchHouseWithRooms } from '../actions';
+import { createHouseWithRooms, updateHouseWithRooms, fetchHouseWithRooms, checkArchiveEligibility, archiveHouse } from '../actions';
 
 interface RoomFormData {
   id?: string;
@@ -30,6 +30,10 @@ function QuickSetupContent() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [deletedRoomIds, setDeletedRoomIds] = useState<string[]>([]);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveBlockers, setArchiveBlockers] = useState<string[]>([]);
+  const [archiving, setArchiving] = useState(false);
+  const [checkingArchive, setCheckingArchive] = useState(false);
   
   // House data
   const [houseData, setHouseData] = useState({
@@ -120,6 +124,43 @@ function QuickSetupContent() {
     setRooms([...rooms, ...newRooms]);
   }
 
+  async function handleArchiveCheck() {
+    if (!editId) return;
+    setCheckingArchive(true);
+    try {
+      const result = await checkArchiveEligibility(editId);
+      if (result.error) {
+        alert('Error checking archive eligibility: ' + result.error);
+        return;
+      }
+      setArchiveBlockers(result.blockers);
+      setShowArchiveModal(true);
+    } catch {
+      alert('Error checking archive eligibility');
+    } finally {
+      setCheckingArchive(false);
+    }
+  }
+
+  async function handleArchiveConfirm() {
+    if (!editId) return;
+    setArchiving(true);
+    try {
+      const result = await archiveHouse(editId);
+      if (result.error) {
+        alert('Error archiving house: ' + result.error);
+        return;
+      }
+      alert('House archived successfully');
+      router.push('/admin/houses');
+    } catch {
+      alert('Error archiving house');
+    } finally {
+      setArchiving(false);
+      setShowArchiveModal(false);
+    }
+  }
+
   async function handleSubmit() {
     setLoading(true);
     
@@ -171,15 +212,84 @@ function QuickSetupContent() {
         >
           ← Back to Houses
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {isEditMode ? 'Edit House' : 'Add House'}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {isEditMode
-            ? 'Update house details and manage rooms'
-            : 'Create a new house and add rooms in one go'}
-        </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEditMode ? 'Edit House' : 'Add House'}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {isEditMode
+                ? 'Update house details and manage rooms'
+                : 'Create a new house and add rooms in one go'}
+            </p>
+          </div>
+          {isEditMode && (
+            <button
+              onClick={handleArchiveCheck}
+              disabled={checkingArchive}
+              className="border border-red-300 text-red-600 px-4 py-2 rounded hover:bg-red-50 flex items-center gap-2 text-sm disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              {checkingArchive ? 'Checking...' : 'Archive House'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Archive House</h2>
+            {archiveBlockers.length > 0 ? (
+              <>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm font-medium text-red-800 mb-2">
+                    Cannot archive this house. The following must be resolved first:
+                  </p>
+                  <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                    {archiveBlockers.map((b, i) => (
+                      <li key={i}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowArchiveModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  Are you sure you want to archive <strong>{houseData.name}</strong>? It will be removed from the active houses list but can be restored later.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowArchiveModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                    disabled={archiving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleArchiveConfirm}
+                    disabled={archiving}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
+                  >
+                    {archiving ? 'Archiving...' : 'Confirm Archive'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Progress Indicator */}
       <div className="bg-white p-4 rounded-lg shadow">
