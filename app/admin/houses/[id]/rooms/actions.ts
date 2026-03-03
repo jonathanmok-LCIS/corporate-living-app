@@ -96,19 +96,19 @@ export async function fetchRoomsWithTenancies(houseId: string) {
       tenanciesByRoom.set(t.room_id, [...existing, t]);
     });
 
-    // Attach tenancies to rooms - prefer OCCUPIED status
+    // Attach tenancies to rooms - prefer ACTIVE status
     const roomsWithTenancies = rooms.map(room => {
       const roomTenancies = tenanciesByRoom.get(room.id) || [];
       
-      // Filter: prefer OCCUPIED, fallback to latest (sorted by created_at desc)
-      const occupied = roomTenancies.filter(t => t.status === 'OCCUPIED');
-      const activeTenancies = occupied.length > 0 ? occupied : roomTenancies.slice(0, 1);
+      // Filter: prefer ACTIVE, fallback to latest (sorted by created_at desc)
+      const active = roomTenancies.filter(t => t.status === 'ACTIVE');
+      const activeTenancies = active.length > 0 ? active : roomTenancies.slice(0, 1);
       
       // Log diagnostic info if no tenancies found
       if (roomTenancies.length === 0) {
         console.log(`[Room ${room.label}] No tenancies found`);
-      } else if (occupied.length === 0) {
-        console.log(`[Room ${room.label}] No OCCUPIED tenancies, showing latest: ${roomTenancies[0]?.status}`);
+      } else if (active.length === 0) {
+        console.log(`[Room ${room.label}] No ACTIVE tenancies, showing latest: ${roomTenancies[0]?.status}`);
       }
 
       return {

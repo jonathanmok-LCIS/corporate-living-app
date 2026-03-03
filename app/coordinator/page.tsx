@@ -114,7 +114,7 @@ export default function CoordinatorDashboard() {
           .from('tenancies')
           .select('id, room_id, status')
           .in('room_id', roomIds)
-          .in('status', ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_OUT_INSPECTION_DRAFT', 'MOVE_OUT_INSPECTION_FINAL', 'MOVE_IN_PENDING_SIGNATURE']);
+          .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
         tenancies = tData || [];
       }
 

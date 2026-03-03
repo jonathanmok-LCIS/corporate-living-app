@@ -75,7 +75,7 @@ export async function createTestTenancy(roomId: string) {
       .from('tenancies')
       .select('id, status')
       .eq('tenant_user_id', user.id)
-      .in('status', ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE'])
+      .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'])
       .maybeSingle();
 
     if (existingTenancy) {
@@ -92,7 +92,7 @@ export async function createTestTenancy(roomId: string) {
         room_id: roomId,
         tenant_user_id: user.id,
         start_date: new Date().toISOString().split('T')[0],
-        status: 'OCCUPIED',
+        status: 'ACTIVE',
       }])
       .select()
       .single();

@@ -71,7 +71,7 @@ export async function createTenancy(tenancyData: {
       room_id: tenancyData.room_id,
       tenant_user_id: tenancyData.tenant_user_id,
       start_date: tenancyData.start_date,
-      status: 'OCCUPIED',
+      status: 'ACTIVE',
     };
 
     // Add optional fields if provided
@@ -106,10 +106,24 @@ export async function endTenancy(tenancyId: string) {
   try {
     const supabaseAdmin = getAdminClient();
 
+    // Guard: verify tenancy exists and is in an appropriate state
+    const { data: current } = await supabaseAdmin
+      .from('tenancies')
+      .select('status')
+      .eq('id', tenancyId)
+      .single();
+
+    if (current && current.status === 'COMPLETED') {
+      return { data: null, error: 'Tenancy is already completed' };
+    }
+    if (current && current.status === 'CANCELLED') {
+      return { data: null, error: 'Tenancy is already cancelled' };
+    }
+
     const { data, error } = await supabaseAdmin
       .from('tenancies')
       .update({
-        status: 'ENDED',
+        status: 'COMPLETED',
         end_date: new Date().toISOString().split('T')[0],
       })
       .eq('id', tenancyId)

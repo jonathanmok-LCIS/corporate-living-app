@@ -409,7 +409,7 @@ export default function UsersPage() {
                     .filter((name): name is string => name !== undefined);
                 } else if ((userWithRelations.roles?.includes('TENANT') || userWithRelations.roles?.includes('COORDINATOR')) && userWithRelations.tenancies) {
                   // Get active tenancies only
-                  const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'OCCUPIED');
+                  const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'ACTIVE');
                   houseAssignments = activeTenancies
                     .map((t) => {
                       const houseName = t.room?.house?.name;

@@ -1,12 +1,30 @@
 export type UserRole = 'ADMIN' | 'COORDINATOR' | 'TENANT';
 
 export type TenancyStatus = 
-  | 'OCCUPIED'
-  | 'MOVE_OUT_INTENDED'
-  | 'MOVE_OUT_INSPECTION_DRAFT'
-  | 'MOVE_OUT_INSPECTION_FINAL'
-  | 'MOVE_IN_PENDING_SIGNATURE'
-  | 'ENDED';
+  | 'ACTIVE'
+  | 'MOVE_OUT_REQUESTED'
+  | 'MOVE_OUT_APPROVED'
+  | 'INSPECTION_PENDING'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+/** Map of old tenancy statuses to new ones (for migration reference) */
+export const TENANCY_STATUS_LABELS: Record<TenancyStatus, string> = {
+  ACTIVE: 'Active',
+  MOVE_OUT_REQUESTED: 'Move-Out Requested',
+  MOVE_OUT_APPROVED: 'Move-Out Approved',
+  INSPECTION_PENDING: 'Inspection Pending',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+/** Statuses considered "active" (tenant still in room) */
+export const ACTIVE_TENANCY_STATUSES: TenancyStatus[] = [
+  'ACTIVE',
+  'MOVE_OUT_REQUESTED',
+  'MOVE_OUT_APPROVED',
+  'INSPECTION_PENDING',
+];
 
 export type InspectionStatus = 'DRAFT' | 'FINAL';
 

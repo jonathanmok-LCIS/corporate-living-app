@@ -217,6 +217,13 @@ export default function MoveOutReviewsPage() {
       return;
     }
 
+    // Guard: verify tenancy is in MOVE_OUT_REQUESTED state
+    const intention = intentions.find(i => i.id === intentionId);
+    if (intention?.sign_off_status !== 'PENDING') {
+      alert(`This intention has already been ${intention?.sign_off_status?.toLowerCase()}. Please refresh.`);
+      return;
+    }
+
     const supabase = createClient();
     
     try {
@@ -239,6 +246,18 @@ export default function MoveOutReviewsPage() {
         .eq('id', intentionId);
 
       if (error) throw error;
+
+      // Update tenancy status to MOVE_OUT_APPROVED
+      const intention = intentions.find(i => i.id === intentionId);
+      if (intention?.tenancy?.id) {
+        const { error: tenancyError } = await supabase
+          .from('tenancies')
+          .update({ status: 'MOVE_OUT_APPROVED' })
+          .eq('id', intention.tenancy.id);
+        if (tenancyError) {
+          console.error('Error updating tenancy status:', tenancyError);
+        }
+      }
 
       alert('Move-out intention approved successfully!');
       setReviewingId(null);
@@ -287,6 +306,18 @@ export default function MoveOutReviewsPage() {
         .eq('id', intentionId);
 
       if (error) throw error;
+
+      // Revert tenancy status back to ACTIVE so tenant can resubmit
+      const intention = intentions.find(i => i.id === intentionId);
+      if (intention?.tenancy?.id) {
+        const { error: tenancyError } = await supabase
+          .from('tenancies')
+          .update({ status: 'ACTIVE' })
+          .eq('id', intention.tenancy.id);
+        if (tenancyError) {
+          console.error('Error reverting tenancy status:', tenancyError);
+        }
+      }
 
       alert('Move-out intention rejected');
       setReviewingId(null);

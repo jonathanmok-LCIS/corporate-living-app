@@ -410,9 +410,9 @@ export default function TenanciesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        tenancy.status === 'OCCUPIED'
+                        tenancy.status === 'ACTIVE'
                           ? 'bg-green-100 text-green-800'
-                          : tenancy.status === 'ENDED'
+                          : tenancy.status === 'COMPLETED'
                           ? 'bg-gray-100 text-gray-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}
@@ -421,7 +421,7 @@ export default function TenanciesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {tenancy.status !== 'ENDED' && (
+                    {tenancy.status !== 'COMPLETED' && (
                       <button
                         onClick={() => handleEndTenancy(tenancy.id)}
                         className="text-red-600 hover:text-red-900"

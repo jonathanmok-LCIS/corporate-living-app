@@ -145,7 +145,7 @@ export default function SeedTenancyPage() {
               <h3 className="text-sm font-semibold text-blue-900 mb-2">What happens when you click Create:</h3>
               <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
                 <li>Creates a new tenancy for your account</li>
-                <li>Sets status to OCCUPIED</li>
+                <li>Sets status to ACTIVE</li>
                 <li>Start date is set to today</li>
                 <li>No end date (active tenancy)</li>
                 <li>You&apos;ll be redirected to /tenant/move-out</li>

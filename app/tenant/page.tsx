@@ -77,12 +77,12 @@ interface MoveOutIntention {
 /* ── Helpers ─────────────────────────────────────────────────────── */
 function getStatusBadge(status: string): { label: string; variant: 'green' | 'yellow' | 'orange' | 'blue' | 'gray' } {
   const map: Record<string, { label: string; variant: 'green' | 'yellow' | 'orange' | 'blue' | 'gray' }> = {
-    OCCUPIED: { label: 'Active', variant: 'green' },
-    MOVE_OUT_INTENDED: { label: 'Move-Out Intended', variant: 'orange' },
-    MOVE_OUT_INSPECTION_DRAFT: { label: 'Inspection Draft', variant: 'yellow' },
-    MOVE_OUT_INSPECTION_FINAL: { label: 'Inspection Final', variant: 'blue' },
-    MOVE_IN_PENDING_SIGNATURE: { label: 'Pending Signature', variant: 'yellow' },
-    ENDED: { label: 'Ended', variant: 'gray' },
+    ACTIVE: { label: 'Active', variant: 'green' },
+    MOVE_OUT_REQUESTED: { label: 'Move-Out Requested', variant: 'orange' },
+    MOVE_OUT_APPROVED: { label: 'Move-Out Approved', variant: 'blue' },
+    INSPECTION_PENDING: { label: 'Inspection Pending', variant: 'yellow' },
+    COMPLETED: { label: 'Completed', variant: 'gray' },
+    CANCELLED: { label: 'Cancelled', variant: 'gray' },
   };
   return map[status] || { label: status.replace(/_/g, ' '), variant: 'gray' };
 }

@@ -101,9 +101,9 @@ export default function AdminDashboard() {
       ] = await Promise.all([
         supabase.from('houses').select('id', { count: 'exact', head: true }).eq('active', true),
         supabase.from('rooms').select('id, house_id', { count: 'exact' }).eq('active', true),
-        supabase.from('tenancies').select('id, room_id', { count: 'exact' }).in('status', ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_OUT_INSPECTION_DRAFT', 'MOVE_OUT_INSPECTION_FINAL', 'MOVE_IN_PENDING_SIGNATURE']),
+        supabase.from('tenancies').select('id, room_id', { count: 'exact' }).in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']),
         supabase.from('move_out_intentions').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']),
-        supabase.from('tenancies').select('id', { count: 'exact', head: true }).eq('keys_received', false).eq('status', 'OCCUPIED'),
+        supabase.from('tenancies').select('id', { count: 'exact', head: true }).eq('keys_received', false).eq('status', 'ACTIVE'),
         supabase.from('inspections').select('id', { count: 'exact', head: true }).eq('status', 'DRAFT'),
         supabase.from('move_out_intentions').select('id, planned_move_out_date, status, sign_off_status, created_at, tenancy:tenancies(id, tenant_user_id, room:rooms(label, house:houses(name)))').order('created_at', { ascending: false }).limit(5),
         supabase.from('inspections').select('id, status, created_at, house:houses(name)').order('created_at', { ascending: false }).limit(5),

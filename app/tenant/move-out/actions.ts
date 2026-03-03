@@ -107,6 +107,14 @@ export async function submitMoveOutIntention(data: {
       return { success: false, error: 'You do not own this tenancy' };
     }
 
+    // Guard: Only allow move-out request if tenancy is ACTIVE
+    if (tenancyCheck && tenancyCheck.status !== 'ACTIVE') {
+      return { 
+        success: false, 
+        error: `Cannot submit move-out: tenancy status is ${tenancyCheck.status}. Only ACTIVE tenancies can request move-out.` 
+      };
+    }
+
     // Insert move-out intention using server client (has proper auth context)
     // Create payload with snake_case column names matching DB schema
     const payload = {
@@ -147,7 +155,7 @@ export async function submitMoveOutIntention(data: {
     }
     const { error: updateError } = await supabase
       .from('tenancies')
-      .update({ status: 'MOVE_OUT_INTENDED' })
+      .update({ status: 'MOVE_OUT_REQUESTED' })
       .eq('id', data.tenancyId);
 
     if (updateError) {
@@ -156,7 +164,7 @@ export async function submitMoveOutIntention(data: {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Tenancy status updated to MOVE_OUT_INTENDED');
+      console.log('Tenancy status updated to MOVE_OUT_REQUESTED');
       console.log('=== SUBMIT COMPLETE ===');
     }
 
@@ -222,7 +230,7 @@ export async function getTenantActiveTenancy() {
     }
 
     // Now query active tenancies with full details
-    const activeStatuses = ['OCCUPIED', 'MOVE_OUT_INTENDED', 'MOVE_IN_PENDING_SIGNATURE', 'MOVE_OUT_INSPECTION_DRAFT', 'MOVE_OUT_INSPECTION_FINAL'];
+    const activeStatuses = ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'];
     console.log('Querying active tenancies with statuses:', activeStatuses);
     
     const { data, error } = await supabaseAdmin
@@ -252,7 +260,7 @@ export async function getTenantActiveTenancy() {
     if (!data) {
       console.log('getTenantActiveTenancy: No ACTIVE tenancy found');
       console.log('Possible reasons:');
-      console.log('- All tenancies have status ENDED');
+      console.log('- All tenancies have status COMPLETED');
       console.log('- Tenancies exist but tenant_user_id does not match auth user.id');
       console.log('- No tenancy records exist at all');
       console.log('=== DIAGNOSTIC END ===');
@@ -348,6 +356,17 @@ export async function resubmitMoveOutIntention(data: {
     if (updateError) {
       console.error('resubmitMoveOutIntention: Update error:', updateError);
       return { success: false, error: updateError.message };
+    }
+
+    // Update tenancy status back to MOVE_OUT_REQUESTED
+    const { error: tenancyError } = await supabase
+      .from('tenancies')
+      .update({ status: 'MOVE_OUT_REQUESTED' })
+      .eq('id', data.tenancyId);
+
+    if (tenancyError) {
+      console.error('resubmitMoveOutIntention: Tenancy update error:', tenancyError);
+      // Don't fail the whole operation — intention was updated successfully
     }
 
     return { success: true, error: null };

@@ -26,7 +26,7 @@ export async function getTenantPendingTenancy() {
       )
     `)
     .eq('tenant_user_id', user.id)
-    .in('status', ['PENDING', 'OCCUPIED', 'MOVE_IN_PENDING_SIGNATURE'])
+    .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED'])
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -51,7 +51,7 @@ export async function getPreviousTenantMoveOutPhotos(roomId: string) {
     .from('tenancies')
     .select('id')
     .eq('room_id', roomId)
-    .eq('status', 'ENDED')
+    .eq('status', 'COMPLETED')
     .order('end_date', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -186,7 +186,7 @@ export async function submitMoveInAcknowledgement(data: {
     .update({
       keys_received: true,
       keys_received_at: new Date().toISOString(),
-      status: 'OCCUPIED',
+      status: 'ACTIVE',
     })
     .eq('id', data.tenancyId)
     .eq('tenant_user_id', user.id);
