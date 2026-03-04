@@ -24,7 +24,9 @@ export default function AdminLayout({
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center space-x-3 md:space-x-6">
               <Link href="/admin" className="flex items-center space-x-2 text-lg font-semibold tracking-tight hover:text-purple-100 transition-colors">
-                <span className="hidden sm:inline">🏢</span>
+                <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" />
+                </svg>
                 <span>Corporate Living</span>
               </Link>
               <div className="hidden md:block w-px h-6 bg-purple-400/40" />

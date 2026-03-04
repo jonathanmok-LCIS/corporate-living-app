@@ -46,8 +46,8 @@ export interface HouseWithStats {
   id: string;
   name: string;
   address: string;
-  totalRooms: number;
-  occupiedRooms: number;
+  totalSlots: number;   // sum of room capacities
+  occupiedSlots: number; // count of active tenancy rows
   coordinatorCount: number;
   pendingMoveOuts: number;
   pendingInspections: number;
@@ -75,10 +75,10 @@ export async function fetchHousesWithStats(): Promise<{
 
     const houseIds = houses.map((h) => h.id);
 
-    // 2. All rooms for these houses
+    // 2. All rooms for these houses (include capacity for slot counting)
     const { data: rooms } = await supabaseAdmin
       .from('rooms')
-      .select('id, house_id')
+      .select('id, house_id, capacity')
       .in('house_id', houseIds)
       .eq('active', true);
 
@@ -147,14 +147,30 @@ export async function fetchHousesWithStats(): Promise<{
       .order('finalised_at', { ascending: false });
 
     // ------ Aggregate per house ------
-    const roomsByHouse = new Map<string, string[]>();
+    // Map room_id to its capacity & house
+    const roomMap = new Map<string, { house_id: string; capacity: number }>();
     for (const r of rooms || []) {
-      const arr = roomsByHouse.get(r.house_id) || [];
-      arr.push(r.id);
-      roomsByHouse.set(r.house_id, arr);
+      roomMap.set(r.id, { house_id: r.house_id, capacity: r.capacity ?? 1 });
     }
 
-    const occupiedByRoom = new Set(tenancies.map((t) => t.room_id));
+    // Total slots (sum of capacities) per house
+    const slotsByHouse = new Map<string, number>();
+    const roomIdsByHouse = new Map<string, string[]>();
+    for (const r of rooms || []) {
+      slotsByHouse.set(r.house_id, (slotsByHouse.get(r.house_id) || 0) + (r.capacity ?? 1));
+      const arr = roomIdsByHouse.get(r.house_id) || [];
+      arr.push(r.id);
+      roomIdsByHouse.set(r.house_id, arr);
+    }
+
+    // Occupied slots = count of tenancy rows per house
+    const occupiedSlotsByHouse = new Map<string, number>();
+    for (const t of tenancies) {
+      const rm = roomMap.get(t.room_id);
+      if (rm) {
+        occupiedSlotsByHouse.set(rm.house_id, (occupiedSlotsByHouse.get(rm.house_id) || 0) + 1);
+      }
+    }
 
     const coordCountByHouse = new Map<string, number>();
     for (const c of coords || []) {
@@ -179,13 +195,12 @@ export async function fetchHousesWithStats(): Promise<{
     }
 
     const result: HouseWithStats[] = houses.map((h) => {
-      const houseRoomIds = roomsByHouse.get(h.id) || [];
       return {
         id: h.id,
         name: h.name,
         address: h.address || '',
-        totalRooms: houseRoomIds.length,
-        occupiedRooms: houseRoomIds.filter((rid) => occupiedByRoom.has(rid)).length,
+        totalSlots: slotsByHouse.get(h.id) || 0,
+        occupiedSlots: occupiedSlotsByHouse.get(h.id) || 0,
         coordinatorCount: coordCountByHouse.get(h.id) || 0,
         pendingMoveOuts: moByHouse.get(h.id) || 0,
         pendingInspections: draftByHouse.get(h.id) || 0,

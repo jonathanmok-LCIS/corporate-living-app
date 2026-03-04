@@ -119,18 +119,20 @@ export default function HouseDetailPage() {
     fetchCoords();
   }
 
-  /* ---- derived stats -------------------------------------------- */
+  /* ---- derived stats (slot-based: capacity=2 counts as 2 slots) -- */
 
   const activeRooms = rooms.filter((r) => r.active);
-  const occupiedRooms = activeRooms.filter((r) => {
-    const t = r.tenancies?.[0];
-    return t && ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'].includes(t.status);
-  });
-  const availableCount = activeRooms.length - occupiedRooms.length;
-  const totalCapacity = activeRooms.reduce((s, r) => s + r.capacity, 0);
-  const totalRevenue = occupiedRooms.reduce((s, r) => {
-    const price = r.tenancies?.[0]?.rental_price;
-    return s + (price ? parseFloat(price) : 0);
+  const ACTIVE_STATUSES = ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'];
+  const totalSlots = activeRooms.reduce((s, r) => s + r.capacity, 0);
+  // Each tenancy row = 1 occupied slot
+  const occupiedSlots = activeRooms.reduce((s, r) => {
+    const activeCount = (r.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status)).length;
+    return s + activeCount;
+  }, 0);
+  const availableSlots = totalSlots - occupiedSlots;
+  const totalRevenue = activeRooms.reduce((s, r) => {
+    const activeTenancies = (r.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status));
+    return s + activeTenancies.reduce((rs, t) => rs + (t.rental_price ? parseFloat(t.rental_price) : 0), 0);
   }, 0);
 
   const assignedIds = coordinators.map((c) => c.user_id);
@@ -182,18 +184,18 @@ export default function HouseDetailPage() {
       {/* ============================================================ */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-gray-900">{activeRooms.length}</p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Total Rooms</p>
+          <p className="text-2xl font-bold text-gray-900">{totalSlots}</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Total Slots</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-purple-700">
-            {occupiedRooms.length}/{activeRooms.length}
+            {occupiedSlots}/{totalSlots}
           </p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Occupied</p>
         </div>
-        <div className={`border rounded-lg p-4 text-center shadow-sm ${availableCount > 0 ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
-          <p className={`text-2xl font-bold ${availableCount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-            {availableCount}
+        <div className={`border rounded-lg p-4 text-center shadow-sm ${availableSlots > 0 ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+          <p className={`text-2xl font-bold ${availableSlots > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+            {availableSlots}
           </p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Available</p>
         </div>
@@ -213,7 +215,7 @@ export default function HouseDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900">
             Rooms
             <span className="text-sm font-normal text-gray-400 ml-2">
-              ({activeRooms.length} active · {totalCapacity} total capacity)
+              ({activeRooms.length} rooms · {totalSlots} slots)
             </span>
           </h2>
         </div>

@@ -100,8 +100,8 @@ export default function AdminDashboard() {
         recentInspRes,
       ] = await Promise.all([
         supabase.from('houses').select('id', { count: 'exact', head: true }).eq('is_archived', false),
-        supabase.from('rooms').select('id, house_id', { count: 'exact' }).eq('active', true),
-        supabase.from('tenancies').select('id, room_id', { count: 'exact' }).in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']),
+        supabase.from('rooms').select('id, house_id, capacity').eq('active', true),
+        supabase.from('tenancies').select('id, room_id', { count: 'exact', head: true }).in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']),
         supabase.from('move_out_intentions').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']),
         supabase.from('tenancies').select('id', { count: 'exact', head: true }).eq('keys_received', false).eq('status', 'ACTIVE'),
         supabase.from('inspections').select('id', { count: 'exact', head: true }).eq('status', 'DRAFT'),
@@ -110,13 +110,16 @@ export default function AdminDashboard() {
       ]);
 
       // compute occupied rooms from active tenancies room_ids
-      const occupiedRoomIds = new Set((activeTenanciesRes.data || []).map((t: { room_id: string }) => t.room_id));
+      // Slot-based counting: sum capacities for total, count tenancy rows for occupied
+      const roomsData = (roomsRes.data || []) as { id: string; house_id: string; capacity?: number }[];
+      const totalSlots = roomsData.reduce((s, r) => s + (r.capacity ?? 1), 0);
+      const occupiedSlots = activeTenanciesRes.count || 0;  // each tenancy row = 1 occupied slot
 
       setData({
         totalHouses: housesRes.count || 0,
         activeTenancies: activeTenanciesRes.count || 0,
-        totalRooms: roomsRes.count || 0,
-        occupiedRooms: occupiedRoomIds.size,
+        totalRooms: totalSlots,
+        occupiedRooms: occupiedSlots,
         moveOutIntentions: moveOutRes.count || 0,
         pendingSignatures: signaturesRes.count || 0,
         draftInspections: inspDraftRes.count || 0,
@@ -239,7 +242,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <KpiCard label="Total Houses" value={data?.totalHouses ?? '—'} icon={icons.home} color="purple" loading={loading} />
         <KpiCard label="Active Tenancies" value={data?.activeTenancies ?? '—'} icon={icons.key} color="blue" loading={loading} />
-        <KpiCard label="Occupancy" value={loading ? '—' : `${occupancyPct}%`} icon={icons.chart} color="green" loading={loading} subtitle={data ? `${data.occupiedRooms} of ${data.totalRooms} rooms` : undefined} />
+        <KpiCard label="Occupancy" value={loading ? '—' : `${occupancyPct}%`} icon={icons.chart} color="green" loading={loading} subtitle={data ? `${data.occupiedRooms} of ${data.totalRooms} slots` : undefined} />
         <KpiCard label="Pending Actions" value={loading ? '—' : totalPending} icon={icons.alert} color={totalPending > 0 ? 'orange' : 'gray'} loading={loading} />
       </div>
 
