@@ -10,6 +10,11 @@ interface House {
   name: string;
 }
 
+interface Room {
+  id: string;
+  label: string;
+}
+
 interface InspectionWithRelations {
   id: string;
   status: string;
@@ -25,8 +30,8 @@ interface InspectionWithRelations {
   };
 }
 
-// Key areas for house inspection
-const KEY_AREAS = [
+// Common areas for house inspection (excludes rooms — those are added dynamically)
+const COMMON_AREAS = [
   'House Front',
   'Entrance',
   'Hallway',
@@ -34,7 +39,6 @@ const KEY_AREAS = [
   'Second Lounge',
   'Kitchen',
   'Dining',
-  'Rooms',
   'Second Level Common Area',
 ];
 
@@ -48,6 +52,8 @@ export default function AdminInspectionsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [selectedHouseId, setSelectedHouseId] = useState('');
+  const [houseRooms, setHouseRooms] = useState<Room[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
 
   useEffect(() => {
     fetchInspections();
@@ -94,6 +100,30 @@ export default function AdminInspectionsPage() {
     }
   }
 
+  async function fetchRoomsForHouse(houseId: string) {
+    if (!houseId) {
+      setHouseRooms([]);
+      return;
+    }
+    const supabase = createClient();
+    setLoadingRooms(true);
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('id, label')
+        .eq('house_id', houseId)
+        .eq('active', true)
+        .order('label');
+      if (error) throw error;
+      setHouseRooms(data || []);
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
+      setHouseRooms([]);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }
+
   async function handleCreateInspection(e: React.FormEvent) {
     e.preventDefault();
     
@@ -125,8 +155,15 @@ export default function AdminInspectionsPage() {
 
       if (inspectionError) throw inspectionError;
 
-      // Create initial areas for the inspection
-      const areasToInsert = KEY_AREAS.map(areaName => ({
+      // Create initial areas: common areas + individual room areas
+      const roomAreaNames = houseRooms.map(r => r.label);
+      const allAreaNames = [
+        ...COMMON_AREAS.slice(0, 7),  // House Front → Dining
+        ...roomAreaNames,              // Room 1, Room 2, etc.
+        ...COMMON_AREAS.slice(7),      // Second Level Common Area
+      ];
+
+      const areasToInsert = allAreaNames.map(areaName => ({
         inspection_id: inspection.id,
         area_name: areaName,
         description: '',
@@ -142,6 +179,7 @@ export default function AdminInspectionsPage() {
       alert('Inspection created successfully');
       setShowCreateForm(false);
       setSelectedHouseId('');
+      setHouseRooms([]);
       
       // Navigate to the inspection detail page
       router.push(`/admin/inspections/${inspection.id}`);
@@ -190,7 +228,10 @@ export default function AdminInspectionsPage() {
               <select
                 required
                 value={selectedHouseId}
-                onChange={(e) => setSelectedHouseId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedHouseId(e.target.value);
+                  fetchRoomsForHouse(e.target.value);
+                }}
                 className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 text-base"
               >
                 <option value="">Select a house</option>
@@ -204,10 +245,24 @@ export default function AdminInspectionsPage() {
 
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
               <p className="text-sm text-blue-800">
-                This will create a house inspection with the following key areas:
+                This will create a house inspection with the following areas:
               </p>
               <ul className="text-sm text-blue-700 mt-2 list-disc list-inside">
-                {KEY_AREAS.map((area) => (
+                {COMMON_AREAS.slice(0, 7).map((area) => (
+                  <li key={area}>{area}</li>
+                ))}
+                {loadingRooms ? (
+                  <li className="text-blue-400 italic">Loading rooms…</li>
+                ) : houseRooms.length > 0 ? (
+                  houseRooms.map((room) => (
+                    <li key={room.id} className="font-medium">{room.label}</li>
+                  ))
+                ) : selectedHouseId ? (
+                  <li className="text-blue-400 italic">No rooms found</li>
+                ) : (
+                  <li className="text-blue-400 italic">Select a house to see rooms</li>
+                )}
+                {COMMON_AREAS.slice(7).map((area) => (
                   <li key={area}>{area}</li>
                 ))}
               </ul>

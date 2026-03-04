@@ -39,8 +39,8 @@ interface AreaPhoto {
   signedUrl?: string;
 }
 
-// Define key areas in logical order for sorting
-const KEY_AREAS_ORDER = [
+// Define common areas in logical order for sorting (rooms are inserted after Dining)
+const COMMON_AREAS_ORDER = [
   'House Front',
   'Entrance',
   'Hallway',
@@ -48,7 +48,7 @@ const KEY_AREAS_ORDER = [
   'Second Lounge',
   'Kitchen',
   'Dining',
-  'Rooms',
+  // Dynamic room names go here
   'Second Level Common Area',
 ];
 
@@ -136,14 +136,18 @@ export default function AdminInspectionDetailPage() {
         })
       );
 
-      // Sort areas by predefined order
+      // Sort areas: common areas first, then rooms in natural order, then trailing common areas
       const sortedAreas = areasWithPhotos.sort((a, b) => {
-        const indexA = KEY_AREAS_ORDER.indexOf(a.area_name);
-        const indexB = KEY_AREAS_ORDER.indexOf(b.area_name);
-        if (indexA === -1 && indexB === -1) return 0;
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
+        const idxA = COMMON_AREAS_ORDER.indexOf(a.area_name);
+        const idxB = COMMON_AREAS_ORDER.indexOf(b.area_name);
+        // Both in common list
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        // Both are room names (not in common list) — natural sort
+        if (idxA === -1 && idxB === -1) return a.area_name.localeCompare(b.area_name, undefined, { numeric: true });
+        // One is common, one is room — rooms sort after Dining (index 6) but before Second Level (index 7)
+        if (idxA === -1) return idxB <= 6 ? 1 : -1;
+        if (idxB === -1) return idxA <= 6 ? -1 : 1;
+        return 0;
       });
 
       setAreas(sortedAreas);
