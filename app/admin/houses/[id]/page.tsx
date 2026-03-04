@@ -347,13 +347,13 @@ export default function HouseDetailPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border rounded-lg p-4 animate-pulse">
+            <div key={i} className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 animate-pulse">
               <div className="h-8 w-16 bg-gray-200 rounded mx-auto mb-2" />
               <div className="h-3 w-20 bg-gray-100 rounded mx-auto" />
             </div>
           ))}
         </div>
-        <div className="bg-white rounded-lg shadow border p-5 animate-pulse">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
           <div className="h-5 w-32 bg-gray-200 rounded mb-4" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-12 bg-gray-50 rounded mb-2" />
@@ -443,7 +443,7 @@ export default function HouseDetailPage() {
       {/*  HOUSE INFO (inline editable)                                 */}
       {/* ============================================================ */}
       {editingHouse ? (
-        <div className="bg-white rounded-lg shadow border border-gray-100 p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Edit House Details</h2>
           {houseError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
@@ -530,19 +530,19 @@ export default function HouseDetailPage() {
       {/*  KPI CARDS                                                    */}
       {/* ============================================================ */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-gray-900">{totalSlots}</p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Total Slots</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-purple-700">
             {occupiedSlots}/{totalSlots}
           </p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Occupied</p>
         </div>
         <div
-          className={`border rounded-lg p-4 text-center shadow-sm ${
-            availableSlots > 0 ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+          className={`border rounded-xl p-4 text-center shadow-sm ${
+            availableSlots > 0 ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'
           }`}
         >
           <p
@@ -554,7 +554,7 @@ export default function HouseDetailPage() {
           </p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Available</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-gray-900">
             ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
@@ -565,7 +565,7 @@ export default function HouseDetailPage() {
       {/* ============================================================ */}
       {/*  ROOMS SECTION                                                */}
       {/* ============================================================ */}
-      <div className="bg-white rounded-lg shadow border border-gray-100">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -880,7 +880,7 @@ export default function HouseDetailPage() {
       {/* ============================================================ */}
       {/*  COORDINATORS SECTION                                         */}
       {/* ============================================================ */}
-      <div className="bg-white rounded-lg shadow border border-gray-100">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             Coordinators
