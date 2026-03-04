@@ -42,6 +42,165 @@ export async function fetchHousesAdmin() {
   }
 }
 
+export interface HouseWithStats {
+  id: string;
+  name: string;
+  address: string;
+  totalRooms: number;
+  occupiedRooms: number;
+  coordinatorCount: number;
+  pendingMoveOuts: number;
+  pendingInspections: number;
+  lastInspectionDate: string | null;
+}
+
+/** Fetches all active houses with aggregated room/tenancy/coordinator stats. */
+export async function fetchHousesWithStats(): Promise<{
+  data: HouseWithStats[] | null;
+  error: string | null;
+}> {
+  try {
+    const supabaseAdmin = getAdminClient();
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Houses
+    const { data: houses, error: hErr } = await supabaseAdmin
+      .from('houses')
+      .select('id, name, address')
+      .eq('is_archived', false)
+      .order('name');
+
+    if (hErr) return { data: null, error: hErr.message };
+    if (!houses || houses.length === 0) return { data: [], error: null };
+
+    const houseIds = houses.map((h) => h.id);
+
+    // 2. All rooms for these houses
+    const { data: rooms } = await supabaseAdmin
+      .from('rooms')
+      .select('id, house_id')
+      .in('house_id', houseIds)
+      .eq('active', true);
+
+    // 3. Active tenancies (ACTIVE, MOVE_OUT_REQUESTED, MOVE_OUT_APPROVED, INSPECTION_PENDING)
+    const allRoomIds = (rooms || []).map((r) => r.id);
+    let tenancies: { room_id: string }[] = [];
+    if (allRoomIds.length > 0) {
+      const { data: t } = await supabaseAdmin
+        .from('tenancies')
+        .select('room_id')
+        .in('room_id', allRoomIds)
+        .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'])
+        .lte('start_date', today)
+        .or('end_date.is.null,end_date.gte.' + today);
+      tenancies = t || [];
+    }
+
+    // 4. Coordinators per house
+    const { data: coords } = await supabaseAdmin
+      .from('house_coordinators')
+      .select('house_id')
+      .in('house_id', houseIds);
+
+    // 5. Pending move-out intentions (via tenancies for these rooms)
+    let pendingMoveOuts: { tenancy_id: string }[] = [];
+    if (allRoomIds.length > 0) {
+      const { data: tenancyRows } = await supabaseAdmin
+        .from('tenancies')
+        .select('id, room_id')
+        .in('room_id', allRoomIds)
+        .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
+
+      const tenancyIdMap: Record<string, string> = {};
+      for (const t of tenancyRows || []) {
+        // map tenancy_id to house_id via room
+        const rm = (rooms || []).find((r) => r.id === t.room_id);
+        if (rm) tenancyIdMap[t.id] = rm.house_id;
+      }
+
+      if (Object.keys(tenancyIdMap).length > 0) {
+        const { data: moi } = await supabaseAdmin
+          .from('move_out_intentions')
+          .select('tenancy_id, sign_off_status')
+          .in('tenancy_id', Object.keys(tenancyIdMap))
+          .eq('sign_off_status', 'PENDING');
+        pendingMoveOuts = (moi || []).map((m) => ({
+          tenancy_id: m.tenancy_id,
+          house_id: tenancyIdMap[m.tenancy_id],
+        })) as unknown as { tenancy_id: string }[];
+      }
+    }
+
+    // 6. Pending (DRAFT) inspections per house
+    const { data: draftInspections } = await supabaseAdmin
+      .from('inspections')
+      .select('id, house_id')
+      .in('house_id', houseIds)
+      .eq('status', 'DRAFT');
+
+    // 7. Latest finalised inspection per house
+    const { data: latestInspections } = await supabaseAdmin
+      .from('inspections')
+      .select('house_id, finalised_at')
+      .in('house_id', houseIds)
+      .eq('status', 'FINAL')
+      .order('finalised_at', { ascending: false });
+
+    // ------ Aggregate per house ------
+    const roomsByHouse = new Map<string, string[]>();
+    for (const r of rooms || []) {
+      const arr = roomsByHouse.get(r.house_id) || [];
+      arr.push(r.id);
+      roomsByHouse.set(r.house_id, arr);
+    }
+
+    const occupiedByRoom = new Set(tenancies.map((t) => t.room_id));
+
+    const coordCountByHouse = new Map<string, number>();
+    for (const c of coords || []) {
+      coordCountByHouse.set(c.house_id, (coordCountByHouse.get(c.house_id) || 0) + 1);
+    }
+
+    const moByHouse = new Map<string, number>();
+    for (const m of pendingMoveOuts as unknown as { tenancy_id: string; house_id: string }[]) {
+      moByHouse.set(m.house_id, (moByHouse.get(m.house_id) || 0) + 1);
+    }
+
+    const draftByHouse = new Map<string, number>();
+    for (const d of draftInspections || []) {
+      if (d.house_id) draftByHouse.set(d.house_id, (draftByHouse.get(d.house_id) || 0) + 1);
+    }
+
+    const latestByHouse = new Map<string, string>();
+    for (const i of latestInspections || []) {
+      if (i.house_id && !latestByHouse.has(i.house_id)) {
+        latestByHouse.set(i.house_id, i.finalised_at);
+      }
+    }
+
+    const result: HouseWithStats[] = houses.map((h) => {
+      const houseRoomIds = roomsByHouse.get(h.id) || [];
+      return {
+        id: h.id,
+        name: h.name,
+        address: h.address || '',
+        totalRooms: houseRoomIds.length,
+        occupiedRooms: houseRoomIds.filter((rid) => occupiedByRoom.has(rid)).length,
+        coordinatorCount: coordCountByHouse.get(h.id) || 0,
+        pendingMoveOuts: moByHouse.get(h.id) || 0,
+        pendingInspections: draftByHouse.get(h.id) || 0,
+        lastInspectionDate: latestByHouse.get(h.id) || null,
+      };
+    });
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error('Unexpected error in fetchHousesWithStats:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error occurred';
+    return { data: null, error: message };
+  }
+}
+
 export async function createHouse(houseData: {
   name: string;
   address: string;
