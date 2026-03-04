@@ -494,6 +494,21 @@ export default function HouseDetailPage() {
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <button
+              onClick={handleArchiveCheck}
+              disabled={checkingArchive}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-medium transition disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                />
+              </svg>
+              {checkingArchive ? 'Checking…' : 'Archive'}
+            </button>
+            <button
               onClick={startEditHouse}
               className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 text-sm font-medium transition"
             >
@@ -506,21 +521,6 @@ export default function HouseDetailPage() {
                 />
               </svg>
               Edit Details
-            </button>
-            <button
-              onClick={handleArchiveCheck}
-              disabled={checkingArchive}
-              className="inline-flex items-center gap-2 border border-red-300 text-red-600 px-4 py-2.5 rounded-lg hover:bg-red-50 text-sm font-medium transition disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                />
-              </svg>
-              {checkingArchive ? 'Checking…' : 'Archive'}
             </button>
           </div>
         </div>
