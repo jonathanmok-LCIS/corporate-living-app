@@ -247,9 +247,9 @@ export default function TenanciesPage() {
                     rental_price: room?.rental_price != null ? String(room.rental_price) : '',
                   });
                 }}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900"
               >
-                <option value="">Select a room...</option>
+                <option value="" className="text-gray-400">Select a room...</option>
                 {rooms.map(room => {
                   const house = houses.find(h => h.id === room.house_id);
                   return (
@@ -270,9 +270,9 @@ export default function TenanciesPage() {
                   required
                   value={formData.slot}
                   onChange={(e) => setFormData({ ...formData, slot: e.target.value as 'A' | 'B' })}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900"
                 >
-                  <option value="">Select a slot...</option>
+                  <option value="" className="text-gray-400">Select a slot...</option>
                   <option value="A">Slot A</option>
                   <option value="B">Slot B</option>
                 </select>
@@ -287,9 +287,9 @@ export default function TenanciesPage() {
                 required
                 value={formData.tenant_user_id}
                 onChange={(e) => setFormData({ ...formData, tenant_user_id: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900"
               >
-                <option value="">Select a tenant...</option>
+                <option value="" className="text-gray-400">Select a tenant...</option>
                 {tenants.map(tenant => (
                   <option key={tenant.id} value={tenant.id}>
                     {tenant.name} ({tenant.email})
@@ -307,7 +307,7 @@ export default function TenanciesPage() {
                 required
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900"
               />
             </div>
 
@@ -319,7 +319,7 @@ export default function TenanciesPage() {
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900"
               />
             </div>
 
@@ -333,7 +333,7 @@ export default function TenanciesPage() {
                 min="0"
                 value={formData.rental_price}
                 onChange={(e) => setFormData({ ...formData, rental_price: e.target.value })}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base text-gray-900 placeholder:text-gray-400"
                 placeholder="0.00"
               />
             </div>
