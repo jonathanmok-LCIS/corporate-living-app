@@ -54,7 +54,8 @@ export interface HouseWithStats {
   lastInspectionDate: string | null;
 }
 
-/** Fetches all active houses with aggregated room/tenancy/coordinator stats. */
+/** Fetches all active houses with aggregated room/tenancy/coordinator stats.
+ *  Queries are parallelized where possible to reduce latency. */
 export async function fetchHousesWithStats(): Promise<{
   data: HouseWithStats[] | null;
   error: string | null;
@@ -63,7 +64,7 @@ export async function fetchHousesWithStats(): Promise<{
     const supabaseAdmin = getAdminClient();
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Houses
+    // Phase 1: Houses
     const { data: houses, error: hErr } = await supabaseAdmin
       .from('houses')
       .select('id, name, address')
@@ -75,138 +76,100 @@ export async function fetchHousesWithStats(): Promise<{
 
     const houseIds = houses.map((h) => h.id);
 
-    // 2. All rooms for these houses (include capacity for slot counting)
-    const { data: rooms } = await supabaseAdmin
-      .from('rooms')
-      .select('id, house_id, capacity')
-      .in('house_id', houseIds)
-      .eq('active', true);
+    // Phase 2: All queries that only need houseIds — run in parallel
+    const [roomsRes, coordsRes, draftRes, latestRes] = await Promise.all([
+      supabaseAdmin.from('rooms').select('id, house_id, capacity').in('house_id', houseIds).eq('active', true),
+      supabaseAdmin.from('house_coordinators').select('house_id').in('house_id', houseIds),
+      supabaseAdmin.from('inspections').select('id, house_id').in('house_id', houseIds).eq('status', 'DRAFT'),
+      supabaseAdmin.from('inspections').select('house_id, finalised_at').in('house_id', houseIds).eq('status', 'FINAL').order('finalised_at', { ascending: false }),
+    ]);
 
-    // 3. Active tenancies (ACTIVE, MOVE_OUT_REQUESTED, MOVE_OUT_APPROVED, INSPECTION_PENDING)
-    const allRoomIds = (rooms || []).map((r) => r.id);
-    let tenancies: { room_id: string }[] = [];
+    const rooms = roomsRes.data || [];
+    const allRoomIds = rooms.map((r) => r.id);
+
+    // Build room lookup
+    const roomMap = new Map<string, { house_id: string; capacity: number }>();
+    for (const r of rooms) {
+      roomMap.set(r.id, { house_id: r.house_id, capacity: r.capacity ?? 1 });
+    }
+
+    // Phase 3: Tenancy data (needs roomIds from phase 2)
+    let tenancyRows: { id: string; room_id: string }[] = [];
     if (allRoomIds.length > 0) {
       const { data: t } = await supabaseAdmin
         .from('tenancies')
-        .select('room_id')
+        .select('id, room_id')
         .in('room_id', allRoomIds)
         .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'])
         .lte('start_date', today)
         .or('end_date.is.null,end_date.gte.' + today);
-      tenancies = t || [];
+      tenancyRows = t || [];
     }
 
-    // 4. Coordinators per house
-    const { data: coords } = await supabaseAdmin
-      .from('house_coordinators')
-      .select('house_id')
-      .in('house_id', houseIds);
-
-    // 5. Pending move-out intentions (via tenancies for these rooms)
-    let pendingMoveOuts: { tenancy_id: string }[] = [];
-    if (allRoomIds.length > 0) {
-      const { data: tenancyRows } = await supabaseAdmin
-        .from('tenancies')
-        .select('id, room_id')
-        .in('room_id', allRoomIds)
-        .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
-
-      const tenancyIdMap: Record<string, string> = {};
-      for (const t of tenancyRows || []) {
-        // map tenancy_id to house_id via room
-        const rm = (rooms || []).find((r) => r.id === t.room_id);
-        if (rm) tenancyIdMap[t.id] = rm.house_id;
-      }
-
-      if (Object.keys(tenancyIdMap).length > 0) {
-        const { data: moi } = await supabaseAdmin
-          .from('move_out_intentions')
-          .select('tenancy_id, sign_off_status')
-          .in('tenancy_id', Object.keys(tenancyIdMap))
-          .eq('sign_off_status', 'PENDING');
-        pendingMoveOuts = (moi || []).map((m) => ({
-          tenancy_id: m.tenancy_id,
-          house_id: tenancyIdMap[m.tenancy_id],
-        })) as unknown as { tenancy_id: string }[];
-      }
+    // Phase 4: Move-out intentions (needs tenancy IDs)
+    const tenancyIdToHouse: Record<string, string> = {};
+    for (const t of tenancyRows) {
+      const rm = roomMap.get(t.room_id);
+      if (rm) tenancyIdToHouse[t.id] = rm.house_id;
     }
 
-    // 6. Pending (DRAFT) inspections per house
-    const { data: draftInspections } = await supabaseAdmin
-      .from('inspections')
-      .select('id, house_id')
-      .in('house_id', houseIds)
-      .eq('status', 'DRAFT');
-
-    // 7. Latest finalised inspection per house
-    const { data: latestInspections } = await supabaseAdmin
-      .from('inspections')
-      .select('house_id, finalised_at')
-      .in('house_id', houseIds)
-      .eq('status', 'FINAL')
-      .order('finalised_at', { ascending: false });
+    let pendingMoveOuts: { tenancy_id: string; house_id: string }[] = [];
+    const tenancyIds = Object.keys(tenancyIdToHouse);
+    if (tenancyIds.length > 0) {
+      const { data: moi } = await supabaseAdmin
+        .from('move_out_intentions')
+        .select('tenancy_id, sign_off_status')
+        .in('tenancy_id', tenancyIds)
+        .eq('sign_off_status', 'PENDING');
+      pendingMoveOuts = (moi || []).map((m) => ({
+        tenancy_id: m.tenancy_id,
+        house_id: tenancyIdToHouse[m.tenancy_id],
+      }));
+    }
 
     // ------ Aggregate per house ------
-    // Map room_id to its capacity & house
-    const roomMap = new Map<string, { house_id: string; capacity: number }>();
-    for (const r of rooms || []) {
-      roomMap.set(r.id, { house_id: r.house_id, capacity: r.capacity ?? 1 });
-    }
-
-    // Total slots (sum of capacities) per house
     const slotsByHouse = new Map<string, number>();
-    const roomIdsByHouse = new Map<string, string[]>();
-    for (const r of rooms || []) {
+    for (const r of rooms) {
       slotsByHouse.set(r.house_id, (slotsByHouse.get(r.house_id) || 0) + (r.capacity ?? 1));
-      const arr = roomIdsByHouse.get(r.house_id) || [];
-      arr.push(r.id);
-      roomIdsByHouse.set(r.house_id, arr);
     }
 
-    // Occupied slots = count of tenancy rows per house
     const occupiedSlotsByHouse = new Map<string, number>();
-    for (const t of tenancies) {
+    for (const t of tenancyRows) {
       const rm = roomMap.get(t.room_id);
-      if (rm) {
-        occupiedSlotsByHouse.set(rm.house_id, (occupiedSlotsByHouse.get(rm.house_id) || 0) + 1);
-      }
+      if (rm) occupiedSlotsByHouse.set(rm.house_id, (occupiedSlotsByHouse.get(rm.house_id) || 0) + 1);
     }
 
     const coordCountByHouse = new Map<string, number>();
-    for (const c of coords || []) {
+    for (const c of coordsRes.data || []) {
       coordCountByHouse.set(c.house_id, (coordCountByHouse.get(c.house_id) || 0) + 1);
     }
 
     const moByHouse = new Map<string, number>();
-    for (const m of pendingMoveOuts as unknown as { tenancy_id: string; house_id: string }[]) {
+    for (const m of pendingMoveOuts) {
       moByHouse.set(m.house_id, (moByHouse.get(m.house_id) || 0) + 1);
     }
 
     const draftByHouse = new Map<string, number>();
-    for (const d of draftInspections || []) {
+    for (const d of draftRes.data || []) {
       if (d.house_id) draftByHouse.set(d.house_id, (draftByHouse.get(d.house_id) || 0) + 1);
     }
 
     const latestByHouse = new Map<string, string>();
-    for (const i of latestInspections || []) {
-      if (i.house_id && !latestByHouse.has(i.house_id)) {
-        latestByHouse.set(i.house_id, i.finalised_at);
-      }
+    for (const i of latestRes.data || []) {
+      if (i.house_id && !latestByHouse.has(i.house_id)) latestByHouse.set(i.house_id, i.finalised_at);
     }
 
-    const result: HouseWithStats[] = houses.map((h) => {
-      return {
-        id: h.id,
-        name: h.name,
-        address: h.address || '',
-        totalSlots: slotsByHouse.get(h.id) || 0,
-        occupiedSlots: occupiedSlotsByHouse.get(h.id) || 0,
-        coordinatorCount: coordCountByHouse.get(h.id) || 0,
-        pendingMoveOuts: moByHouse.get(h.id) || 0,
-        pendingInspections: draftByHouse.get(h.id) || 0,
-        lastInspectionDate: latestByHouse.get(h.id) || null,
-      };
-    });
+    const result: HouseWithStats[] = houses.map((h) => ({
+      id: h.id,
+      name: h.name,
+      address: h.address || '',
+      totalSlots: slotsByHouse.get(h.id) || 0,
+      occupiedSlots: occupiedSlotsByHouse.get(h.id) || 0,
+      coordinatorCount: coordCountByHouse.get(h.id) || 0,
+      pendingMoveOuts: moByHouse.get(h.id) || 0,
+      pendingInspections: draftByHouse.get(h.id) || 0,
+      lastInspectionDate: latestByHouse.get(h.id) || null,
+    }));
 
     return { data: result, error: null };
   } catch (err) {
@@ -503,6 +466,35 @@ export async function checkDuplicateHouse(
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return { isDuplicate: false, error: message };
+  }
+}
+
+/**
+ * Update house name and address (with duplicate check).
+ */
+export async function updateHouseInfo(
+  houseId: string,
+  data: { name: string; address: string }
+): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    if (!data.name.trim()) return { error: 'House name is required' };
+    if (!data.address.trim()) return { error: 'Address is required' };
+
+    const dup = await checkDuplicateHouse(data.name, data.address, houseId);
+    if (dup.error) return { error: dup.error };
+    if (dup.isDuplicate) return { error: 'A house with this name and address already exists.' };
+
+    const { error } = await supabaseAdmin
+      .from('houses')
+      .update({ name: data.name.trim(), address: data.address.trim() })
+      .eq('id', houseId);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 

@@ -100,16 +100,9 @@ export async function fetchRoomsWithTenancies(houseId: string) {
     const roomsWithTenancies = rooms.map(room => {
       const roomTenancies = tenanciesByRoom.get(room.id) || [];
       
-      // Filter: prefer ACTIVE, fallback to latest (sorted by created_at desc)
-      const active = roomTenancies.filter(t => t.status === 'ACTIVE');
-      const activeTenancies = active.length > 0 ? active : roomTenancies.slice(0, 1);
-      
-      // Log diagnostic info if no tenancies found
-      if (roomTenancies.length === 0) {
-        console.log(`[Room ${room.label}] No tenancies found`);
-      } else if (active.length === 0) {
-        console.log(`[Room ${room.label}] No ACTIVE tenancies, showing latest: ${roomTenancies[0]?.status}`);
-      }
+      // Return all tenancies with active-like statuses (supports capacity-2 rooms)
+      const ACTIVE_STATUSES = ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'];
+      const activeTenancies = roomTenancies.filter(t => ACTIVE_STATUSES.includes(t.status));
 
       return {
         ...room,
@@ -123,5 +116,131 @@ export async function fetchRoomsWithTenancies(houseId: string) {
     console.error('Unexpected error in fetchRoomsWithTenancies:', err);
     const message = err instanceof Error ? err.message : 'Unknown error occurred';
     return { data: null, error: message };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Room CRUD                                                          */
+/* ------------------------------------------------------------------ */
+
+export async function addRoom(
+  houseId: string,
+  data: { label: string; capacity: 1 | 2; rental_price: number | null }
+): Promise<{ data: unknown | null; error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Duplicate label check (active rooms only)
+    const { count, error: checkErr } = await supabaseAdmin
+      .from('rooms')
+      .select('id', { count: 'exact', head: true })
+      .eq('house_id', houseId)
+      .ilike('label', data.label.trim())
+      .eq('active', true);
+
+    if (checkErr) return { data: null, error: checkErr.message };
+    if ((count ?? 0) > 0) return { data: null, error: 'A room with this label already exists in this house.' };
+
+    const { data: room, error } = await supabaseAdmin
+      .from('rooms')
+      .insert({
+        house_id: houseId,
+        label: data.label.trim(),
+        capacity: data.capacity,
+        rental_price: data.rental_price,
+      })
+      .select()
+      .single();
+
+    if (error) return { data: null, error: error.message };
+    return { data: room, error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function updateRoom(
+  roomId: string,
+  data: { label: string; capacity: 1 | 2; rental_price: number | null }
+): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Get current room to find house_id
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('rooms')
+      .select('house_id')
+      .eq('id', roomId)
+      .single();
+
+    if (fetchErr || !existing) return { error: 'Room not found' };
+
+    // Duplicate label check (excluding self)
+    const { count } = await supabaseAdmin
+      .from('rooms')
+      .select('id', { count: 'exact', head: true })
+      .eq('house_id', existing.house_id)
+      .ilike('label', data.label.trim())
+      .eq('active', true)
+      .neq('id', roomId);
+
+    if ((count ?? 0) > 0) return { error: 'A room with this label already exists.' };
+
+    const { error } = await supabaseAdmin
+      .from('rooms')
+      .update({
+        label: data.label.trim(),
+        capacity: data.capacity,
+        rental_price: data.rental_price,
+      })
+      .eq('id', roomId);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function archiveRoom(roomId: string): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Check for active tenancies
+    const { count } = await supabaseAdmin
+      .from('tenancies')
+      .select('id', { count: 'exact', head: true })
+      .eq('room_id', roomId)
+      .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
+
+    if (count && count > 0) {
+      return { error: 'Cannot archive: room has active tenancies.' };
+    }
+
+    const { error } = await supabaseAdmin
+      .from('rooms')
+      .update({ active: false })
+      .eq('id', roomId);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function restoreRoom(roomId: string): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from('rooms')
+      .update({ active: true })
+      .eq('id', roomId);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }

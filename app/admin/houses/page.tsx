@@ -27,7 +27,35 @@ export default function HousesPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading…</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-9 w-36 bg-gray-200 rounded animate-pulse" />
+          <div className="flex gap-3">
+            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-28 bg-purple-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
+              <div className="p-5 pb-3">
+                <div className="h-5 w-40 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 w-56 bg-gray-100 rounded animate-pulse" />
+              </div>
+              <div className="px-5 pb-4 grid grid-cols-3 gap-3">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="bg-gray-50 rounded-lg py-4 animate-pulse" />
+                ))}
+              </div>
+              <div className="border-t border-gray-100 px-5 py-3">
+                <div className="h-3 w-32 bg-gray-100 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
