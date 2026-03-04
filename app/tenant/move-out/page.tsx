@@ -183,6 +183,12 @@ export default function MoveOutIntentionPage() {
       return;
     }
 
+    // Validate damage photos required when damage reported
+    if (formData.hasDamage === 'yes' && damagePhotoUrls.length === 0 && damagePhotos.length === 0) {
+      setSubmitError('Please upload at least one photo of the damage/stain.');
+      return;
+    }
+
     // Validate confirmations
     if (!formData.utilitiesArranged) {
       setSubmitError('Please confirm you have arranged utility payments with your coordinator.');
@@ -719,7 +725,11 @@ export default function MoveOutIntentionPage() {
                   value="no"
                   required
                   checked={formData.hasDamage === 'no'}
-                  onChange={(e) => setFormData({ ...formData, hasDamage: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, hasDamage: e.target.value, damageDescription: '' });
+                    setDamagePhotos([]);
+                    setDamagePhotoUrls([]);
+                  }}
                   className="mr-2"
                 />
                 <span className="text-gray-900">No</span>
@@ -854,9 +864,10 @@ export default function MoveOutIntentionPage() {
             )}
           </div>
 
+          {formData.hasDamage === 'yes' && (
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Damage/Stain Photos (If applicable)
+              Damage/Stain Photos * (Required)
             </label>
             
             {/* Display existing damage photos when resubmitting */}
@@ -938,6 +949,7 @@ export default function MoveOutIntentionPage() {
               </p>
             )}
           </div>
+          )}
 
           {/* Bond Return Information */}
           <div className="border-t pt-4">
