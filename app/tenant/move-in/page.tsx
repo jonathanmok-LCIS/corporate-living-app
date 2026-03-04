@@ -117,7 +117,19 @@ export default function MoveInAcknowledgementPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="text-center py-8">Loading...</div>
+        <div className="space-y-6">
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="space-y-3">
+              <div className="h-5 w-48 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-40 bg-gray-100 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -125,7 +137,7 @@ export default function MoveInAcknowledgementPage() {
   if (signed) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-lg">
+        <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-xl">
           <h1 className="text-2xl font-bold text-green-900 mb-2">
             Move-In Acknowledgement Completed
           </h1>
@@ -160,7 +172,7 @@ export default function MoveInAcknowledgementPage() {
 
       {/* Tenancy Details */}
       {tenancyData && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Tenancy Details</h2>
           <dl className="grid grid-cols-2 gap-4">
             <div>
@@ -187,7 +199,7 @@ export default function MoveInAcknowledgementPage() {
 
       {/* Condition Report - General Photos */}
       {keyAreaPhotos.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">
             General Condition Photos
           </h2>
@@ -218,7 +230,7 @@ export default function MoveInAcknowledgementPage() {
 
       {/* Condition Report - Damage Photos */}
       {damagePhotos.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">
             Specific Damages/Issues Documented
           </h2>
@@ -255,7 +267,7 @@ export default function MoveInAcknowledgementPage() {
 
       {/* No photos available message */}
       {keyAreaPhotos.length === 0 && damagePhotos.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">Room Condition Report</h2>
           <p className="text-gray-600 mb-4">
             No photos available from previous inspection. The room should be in clean, good condition.
@@ -267,7 +279,7 @@ export default function MoveInAcknowledgementPage() {
       )}
 
       {/* Key Confirmation */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">Key Confirmation</h2>
         <label className="flex items-start space-x-3 cursor-pointer">
           <input
@@ -287,7 +299,7 @@ export default function MoveInAcknowledgementPage() {
         </label>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">Sign Acknowledgement</h2>
         
         <div className="mb-4">
@@ -330,13 +342,13 @@ export default function MoveInAcknowledgementPage() {
           <button
             onClick={handleSubmit}
             disabled={!keysConfirmed}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
           >
             Submit Signature
           </button>
           <a
             href="/tenant"
-            className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400 inline-block"
+            className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 inline-block transition-colors"
           >
             Cancel
           </a>

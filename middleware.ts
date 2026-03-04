@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // --- Auth-only routes: must be logged in ---
-  const authRequiredPrefixes = ['/dashboard', '/admin', '/coordinator', '/tenant', '/change-password']
+  const authRequiredPrefixes = ['/admin', '/coordinator', '/tenant', '/change-password']
   const needsAuth = authRequiredPrefixes.some((prefix) => pathname.startsWith(prefix))
 
   if (needsAuth && !user) {
@@ -92,7 +92,7 @@ export async function middleware(request: NextRequest) {
         .single()
 
       const firstRole = (profile?.roles as string[])?.[0]
-      const home = firstRole ? (ROLE_HOME[firstRole] ?? '/dashboard') : '/dashboard'
+      const home = firstRole ? (ROLE_HOME[firstRole] ?? '/login') : '/login'
       return NextResponse.redirect(new URL(home, request.url))
     }
   }
@@ -102,7 +102,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
+    '/dashboard',
     '/auth/:path*',
     '/admin/:path*',
     '/coordinator/:path*',

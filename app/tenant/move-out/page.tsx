@@ -427,11 +427,11 @@ export default function MoveOutIntentionPage() {
   if (initialLoading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading your tenancy information...</p>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-500">Loading your tenancy information...</p>
             </div>
           </div>
         </div>
@@ -556,7 +556,7 @@ export default function MoveOutIntentionPage() {
   // Active tenancy - show form
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">
           {existingIntention?.sign_off_status === 'REJECTED' ? 'Resubmit Move-Out Intention' : 'Submit Move-Out Intention'}
         </h1>
@@ -1037,13 +1037,13 @@ export default function MoveOutIntentionPage() {
             <button
               type="submit"
               disabled={!tenancy || loading || uploadingPhotos || compressing}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {compressing ? 'Compressing...' : uploadingPhotos ? 'Uploading Photos...' : loading ? 'Submitting...' : existingIntention?.sign_off_status === 'REJECTED' ? 'Review & Resubmit' : 'Review & Submit'}
             </button>
             <a
               href="/tenant"
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400 inline-block"
+              className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 inline-block transition-colors"
             >
               Cancel
             </a>
@@ -1054,7 +1054,7 @@ export default function MoveOutIntentionPage() {
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Confirm Move-Out Submission</h2>
               
@@ -1115,14 +1115,14 @@ export default function MoveOutIntentionPage() {
                 <button
                   onClick={confirmAndSubmit}
                   disabled={loading}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 transition-colors"
                 >
                   {loading ? 'Submitting...' : 'Confirm & Submit'}
                 </button>
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   disabled={loading}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 disabled:bg-gray-200"
+                  className="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:bg-gray-100 transition-colors"
                 >
                   Go Back
                 </button>

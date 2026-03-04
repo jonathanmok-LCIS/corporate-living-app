@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import { StatusBadge } from '@/components/dashboard';
 
 interface MoveOutIntention {
   id: string;
@@ -331,42 +332,59 @@ export default function MoveOutReviewsPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-9 w-64 bg-gray-200 rounded animate-pulse" />
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+              <div className="flex justify-between mb-4">
+                <div className="space-y-2">
+                  <div className="h-5 w-48 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+              <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Move-Out Intention Reviews</h1>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Move-Out Intention Reviews</h1>
+        <p className="text-sm text-gray-500 mt-1">Review and sign off on tenant move-out intentions</p>
+      </div>
 
       {intentions.length === 0 ? (
-        <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
-          No move-out intentions to review
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center">
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+          </svg>
+          <p className="text-gray-500 text-sm">No move-out intentions to review</p>
         </div>
       ) : (
         <div className="space-y-4">
           {intentions.map((intention) => (
-            <div key={intention.id} className="bg-white p-6 rounded-lg shadow">
+            <div key={intention.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900">
                     {intention.tenancy.tenant.name}
                   </h2>
                   <p className="text-sm text-gray-600">
-                    {intention.tenancy.room.house.name} - {intention.tenancy.room.label}
+                    {intention.tenancy.room.house.name} — {intention.tenancy.room.label}
                   </p>
                   <p className="text-sm text-gray-500">{intention.tenancy.tenant.email}</p>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    intention.sign_off_status === 'APPROVED'
-                      ? 'bg-green-100 text-green-800'
-                      : intention.sign_off_status === 'REJECTED'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}
-                >
-                  {intention.sign_off_status}
-                </span>
+                <StatusBadge
+                  label={intention.sign_off_status === 'APPROVED' ? 'Approved' : intention.sign_off_status === 'REJECTED' ? 'Rejected' : 'Pending'}
+                  variant={intention.sign_off_status === 'APPROVED' ? 'green' : intention.sign_off_status === 'REJECTED' ? 'red' : 'yellow'}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -385,7 +403,7 @@ export default function MoveOutReviewsPage() {
               </div>
 
               {/* Tenant's Answers Section */}
-              <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+              <div className="border rounded-xl p-4 mb-4 bg-gray-50">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Tenant&apos;s Submission</h3>
                 
                 {/* Question 1: Rent Paid Up */}
@@ -672,17 +690,17 @@ export default function MoveOutReviewsPage() {
                         <button
                           onClick={() => handleApprove(intention.id)}
                           disabled={!allVerified()}
-                          className={`px-4 py-2 rounded ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             allVerified()
                               ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                           }`}
                         >
                           {allVerified() ? 'Approve' : 'Verify All Items to Approve'}
                         </button>
                         <button
                           onClick={() => handleReject(intention.id)}
-                          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                         >
                           Reject
                         </button>
@@ -692,7 +710,7 @@ export default function MoveOutReviewsPage() {
                             setVerification(defaultVerification);
                             setAdditionalNotes('');
                           }}
-                          className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                          className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                         >
                           Cancel
                         </button>
@@ -701,7 +719,7 @@ export default function MoveOutReviewsPage() {
                   ) : (
                     <button
                       onClick={() => setReviewingId(intention.id)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
                     >
                       Review & Sign Off
                     </button>

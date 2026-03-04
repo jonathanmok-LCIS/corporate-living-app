@@ -58,24 +58,46 @@ export default function HousesPage() {
     );
   }
 
+  // Compute inspection due status per house (6-month cycle)
+  function getInspectionStatus(lastDate: string | null): 'overdue' | 'due-soon' | 'ok' {
+    if (!lastDate) return 'overdue';
+    const last = new Date(lastDate);
+    const now = new Date();
+    const monthsSince = (now.getFullYear() - last.getFullYear()) * 12 + (now.getMonth() - last.getMonth());
+    if (monthsSince >= 6) return 'overdue';
+    if (monthsSince >= 5) return 'due-soon';
+    return 'ok';
+  }
+
+  const overdueCount = houses.filter(h => getInspectionStatus(h.lastInspectionDate) === 'overdue').length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">Houses</h1>
         <div className="flex items-center gap-3">
           <Link
             href="/admin/houses/archived"
-            className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 flex items-center gap-2 text-sm"
+            className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
-            View Archived
+            Archived
+          </Link>
+          <Link
+            href="/admin/inspections?create=true"
+            className="border border-purple-200 text-purple-700 bg-purple-50 px-4 py-2 rounded-lg hover:bg-purple-100 flex items-center gap-2 text-sm font-medium transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            New Inspection
           </Link>
           <Link
             href="/admin/houses/quick-setup"
-            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm font-medium transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -84,6 +106,23 @@ export default function HousesPage() {
           </Link>
         </div>
       </div>
+
+      {/* Inspection overdue alert */}
+      {overdueCount > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="font-medium text-red-800">
+              {overdueCount} house{overdueCount !== 1 ? 's' : ''} overdue for inspection
+            </p>
+            <p className="text-sm text-red-600 mt-0.5">
+              House inspections should be completed every 6 months. Look for the red indicator on the cards below.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {houses.length === 0 && (
@@ -100,12 +139,13 @@ export default function HousesPage() {
         {houses.map((house) => {
           const available = house.totalSlots - house.occupiedSlots;
           const hasPending = house.pendingMoveOuts > 0 || house.pendingInspections > 0;
+          const inspStatus = getInspectionStatus(house.lastInspectionDate);
 
           return (
             <Link
               key={house.id}
               href={`/admin/houses/${house.id}`}
-              className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-100 group"
+              className="block bg-white rounded-xl shadow-sm hover:shadow-md transition-all border border-gray-100 group"
             >
               {/* House name + address */}
               <div className="p-5 pb-3">
@@ -169,15 +209,33 @@ export default function HousesPage() {
               )}
 
               {/* Last inspection footer */}
-              <div className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-400 flex justify-between items-center">
-                <span>
+              <div className={`border-t px-5 py-2.5 text-xs flex justify-between items-center ${
+                inspStatus === 'overdue'
+                  ? 'border-red-100 bg-red-50'
+                  : inspStatus === 'due-soon'
+                    ? 'border-amber-100 bg-amber-50'
+                    : 'border-gray-100'
+              }`}>
+                <span className={`flex items-center gap-1.5 ${
+                  inspStatus === 'overdue' ? 'text-red-600 font-medium' : inspStatus === 'due-soon' ? 'text-amber-600 font-medium' : 'text-gray-400'
+                }`}>
+                  {inspStatus === 'overdue' && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  {inspStatus === 'due-soon' && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
                   {house.lastInspectionDate
-                    ? `Last inspection: ${new Date(house.lastInspectionDate).toLocaleDateString('en-AU', {
+                    ? `${inspStatus === 'overdue' ? 'Overdue — ' : inspStatus === 'due-soon' ? 'Due soon — ' : ''}Last: ${new Date(house.lastInspectionDate).toLocaleDateString('en-AU', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
                       })}`
-                    : 'No inspections'}
+                    : 'Never inspected'}
                 </span>
                 <svg
                   className="w-4 h-4 text-gray-300 group-hover:text-purple-500 transition-colors"

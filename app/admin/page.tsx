@@ -61,6 +61,7 @@ interface DashboardData {
   moveOutIntentions: number;
   pendingSignatures: number;
   draftInspections: number;
+  overdueInspections: number;
   // Recent activity
   recentMoveOuts: { id: string; tenant_name: string; house_name: string; room_label: string; planned_date: string; status: string }[];
   recentInspections: { id: string; house_name: string; status: string; created_at: string }[];
@@ -98,6 +99,8 @@ export default function AdminDashboard() {
         inspDraftRes,
         recentMoveOutsRes,
         recentInspRes,
+        allHousesRes,
+        finalInspRes,
       ] = await Promise.all([
         supabase.from('houses').select('id', { count: 'exact', head: true }).eq('is_archived', false),
         supabase.from('rooms').select('id, house_id, capacity').eq('active', true),
@@ -107,7 +110,22 @@ export default function AdminDashboard() {
         supabase.from('inspections').select('id', { count: 'exact', head: true }).eq('status', 'DRAFT'),
         supabase.from('move_out_intentions').select('id, planned_move_out_date, status, sign_off_status, created_at, tenancy:tenancies(id, tenant_user_id, room:rooms(label, house:houses(name)))').order('created_at', { ascending: false }).limit(5),
         supabase.from('inspections').select('id, status, created_at, house:houses(name)').order('created_at', { ascending: false }).limit(5),
+        supabase.from('houses').select('id').eq('is_archived', false),
+        supabase.from('inspections').select('house_id, finalised_at').eq('status', 'FINAL').order('finalised_at', { ascending: false }),
       ]);
+
+      // Compute overdue inspections (>6 months since last FINAL or never inspected)
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const latestByHouse = new Map<string, string>();
+      for (const fi of (finalInspRes.data || []) as { house_id: string; finalised_at: string }[]) {
+        if (fi.house_id && !latestByHouse.has(fi.house_id)) latestByHouse.set(fi.house_id, fi.finalised_at);
+      }
+      let overdueCount = 0;
+      for (const h of (allHousesRes.data || []) as { id: string }[]) {
+        const latest = latestByHouse.get(h.id);
+        if (!latest || new Date(latest) < sixMonthsAgo) overdueCount++;
+      }
 
       // compute occupied rooms from active tenancies room_ids
       // Slot-based counting: sum capacities for total, count tenancy rows for occupied
@@ -123,6 +141,7 @@ export default function AdminDashboard() {
         moveOutIntentions: moveOutRes.count || 0,
         pendingSignatures: signaturesRes.count || 0,
         draftInspections: inspDraftRes.count || 0,
+        overdueInspections: overdueCount,
         recentMoveOuts: (recentMoveOutsRes.data || []).map((m: Record<string, unknown>) => {
           const tenancy = m.tenancy as Record<string, unknown> | null;
           const room = tenancy?.room as Record<string, unknown> | null;
@@ -153,7 +172,7 @@ export default function AdminDashboard() {
   }, []);
 
   const occupancyPct = data && data.totalRooms > 0 ? Math.round((data.occupiedRooms / data.totalRooms) * 100) : 0;
-  const totalPending = data ? data.moveOutIntentions + data.pendingSignatures + data.draftInspections : 0;
+  const totalPending = data ? data.moveOutIntentions + data.pendingSignatures + data.draftInspections + data.overdueInspections : 0;
 
   /* ── Build action items for approval queue ─────────────────────── */
   const actionItems: ActionItem[] = [];
@@ -183,6 +202,15 @@ export default function AdminDashboard() {
         href: '/admin/tenancies',
         badge: { label: 'Awaiting', variant: 'yellow' },
         icon: <div className="text-yellow-500">{icons.key}</div>,
+      });
+    }
+    if (data.overdueInspections > 0) {
+      actionItems.push({
+        id: 'overdue-inspections',
+        title: `${data.overdueInspections} house${data.overdueInspections !== 1 ? 's' : ''} overdue for inspection`,
+        href: '/admin/houses',
+        badge: { label: 'Overdue', variant: 'red', pulse: true },
+        icon: <div className="text-red-500">{icons.clipboard}</div>,
       });
     }
   }
@@ -231,22 +259,11 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Overview of properties, tenancies, and pending actions
-          </p>
-        </div>
-        <Link
-          href="/admin/inspections?create=true"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-purple-700 active:bg-purple-800 transition-colors whitespace-nowrap"
-        >
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-5 w-5">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Inspection
-        </Link>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Overview of properties, tenancies, and pending actions
+        </p>
       </div>
 
       {/* KPI Row */}

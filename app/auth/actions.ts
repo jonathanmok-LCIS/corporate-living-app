@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 
 export async function login(formData: FormData) {
@@ -9,13 +9,30 @@ export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
     redirect('/auth/login?error=Invalid credentials')
+  }
+
+  // Redirect to role-based home
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('roles')
+    .eq('id', data.user?.id ?? '')
+    .single()
+
+  const roles: string[] = profile?.roles ?? []
+
+  if (roles.includes('ADMIN')) {
+    redirect('/admin')
+  } else if (roles.includes('COORDINATOR')) {
+    redirect('/coordinator')
+  } else if (roles.includes('TENANT')) {
+    redirect('/tenant')
   }
 
   redirect('/dashboard')
@@ -45,7 +62,7 @@ export async function signup(formData: FormData) {
         id: authData.user.id,
         email,
         full_name: fullName,
-        role: 'TENANT', // Default role
+        roles: ['TENANT'], // Default role
       })
 
     if (profileError) {

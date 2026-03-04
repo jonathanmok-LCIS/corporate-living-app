@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
+import { StatusBadge } from '@/components/dashboard';
 
 interface InspectionWithRelations {
   id: string;
@@ -33,7 +34,6 @@ export default function CoordinatorInspectionsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // First get the houses this coordinator is assigned to
       const { data: coordinatorHouses, error: hcError } = await supabase
         .from('house_coordinators')
         .select('house_id')
@@ -48,7 +48,6 @@ export default function CoordinatorInspectionsPage() {
         return;
       }
 
-      // Get inspections only for houses this coordinator manages
       const { data, error } = await supabase
         .from('inspections')
         .select(`
@@ -77,95 +76,74 @@ export default function CoordinatorInspectionsPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div className="flex justify-between">
+                <div className="space-y-2 flex-1">
+                  <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">House Inspections</h1>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">House Inspections</h1>
+        <p className="text-sm text-gray-500 mt-1">Inspections for your assigned houses</p>
       </div>
 
-      {/* Inspections Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">All Inspections</h2>
+      {inspections.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center">
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <p className="text-gray-500 text-sm">No inspections found for your assigned houses.</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  House
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {inspections.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    No inspections found for your assigned houses.
-                  </td>
-                </tr>
-              ) : (
-                inspections.map((inspection) => (
-                  <tr key={inspection.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatDate(inspection.finalised_at || inspection.created_at)}
-                      </div>
-                      {inspection.finalised_at && (
-                        <div className="text-xs text-gray-500">Finalised</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {inspection.house?.name || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          inspection.status === 'FINAL'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {inspection.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {inspection.created_by_profile?.name || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link
-                        href={`/coordinator/inspections/${inspection.id}`}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        {inspection.status === 'FINAL' ? 'View' : 'Edit'}
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      ) : (
+        <div className="space-y-3">
+          {inspections.map((inspection) => (
+            <Link
+              key={inspection.id}
+              href={`/coordinator/inspections/${inspection.id}`}
+              className="block bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all p-5 group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-semibold text-gray-900 group-hover:text-green-700 transition-colors">
+                      {inspection.house?.name || 'Unknown'}
+                    </p>
+                    <StatusBadge
+                      label={inspection.status === 'FINAL' ? 'Finalised' : 'Draft'}
+                      variant={inspection.status === 'FINAL' ? 'green' : 'orange'}
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500">
+                    <span>{formatDate(inspection.finalised_at || inspection.created_at)}</span>
+                    {inspection.created_by_profile?.name && (
+                      <span>by {inspection.created_by_profile.name}</span>
+                    )}
+                  </div>
+                </div>
+                <svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </Link>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
