@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTenantActiveTenancy, getTenantMoveOutIntention } from './move-out/actions';
+import { getExistingAcknowledgement } from './move-in/actions';
 import { StatusBadge, SectionCard, ActionList } from '@/components/dashboard';
 import type { ActionItem } from '@/components/dashboard';
 
@@ -133,6 +134,7 @@ function getMoveOutStatusConfig(intention: MoveOutIntention) {
 export default function TenantDashboard() {
   const [tenancy, setTenancy] = useState<TenancyData | null>(null);
   const [moveOutIntention, setMoveOutIntention] = useState<MoveOutIntention | null>(null);
+  const [moveInSigned, setMoveInSigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -152,6 +154,12 @@ export default function TenantDashboard() {
         const intentionResult = await getTenantMoveOutIntention(result.data.id);
         if (intentionResult.data) {
           setMoveOutIntention(intentionResult.data as MoveOutIntention);
+        }
+
+        // Check move-in acknowledgement
+        const ackResult = await getExistingAcknowledgement(result.data.id);
+        if (ackResult.data) {
+          setMoveInSigned(true);
         }
       } else {
         setTenancy(null);
@@ -189,10 +197,13 @@ export default function TenantDashboard() {
   if (tenancy) {
     actionItems.push({
       id: 'move-in',
-      title: 'Move-In Acknowledgement',
-      description: 'View room condition and sign move-in acknowledgement',
+      title: moveInSigned ? 'Move-In Acknowledged' : 'Move-In Acknowledgement',
+      description: moveInSigned
+        ? 'You have already signed the move-in acknowledgement'
+        : 'View room condition and sign move-in acknowledgement',
       href: '/tenant/move-in',
-      icon: <div className="text-blue-500">{icons.moveIn}</div>,
+      badge: moveInSigned ? { label: 'Completed', variant: 'green' } : undefined,
+      icon: <div className={moveInSigned ? 'text-green-500' : 'text-blue-500'}>{moveInSigned ? icons.check : icons.moveIn}</div>,
     });
   }
 
@@ -364,10 +375,12 @@ export default function TenantDashboard() {
             href="/tenant/move-in"
             className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group"
           >
-            <div className="rounded-lg p-2 bg-blue-50 group-hover:scale-110 transition-transform">
-              <div className="text-blue-600">{icons.moveIn}</div>
+            <div className={`rounded-lg p-2 ${moveInSigned ? 'bg-green-50' : 'bg-blue-50'} group-hover:scale-110 transition-transform`}>
+              <div className={moveInSigned ? 'text-green-600' : 'text-blue-600'}>{moveInSigned ? icons.check : icons.moveIn}</div>
             </div>
-            <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 text-center">Move In</span>
+            <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 text-center">
+              {moveInSigned ? 'Move-In Signed' : 'Move In'}
+            </span>
           </Link>
         </div>
       </div>

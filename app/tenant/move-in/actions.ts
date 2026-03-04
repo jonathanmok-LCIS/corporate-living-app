@@ -115,29 +115,25 @@ export async function getPreviousTenantMoveOutPhotos(roomId: string) {
   };
 }
 
-export async function confirmKeysReceived(tenancyId: string) {
+export async function getExistingAcknowledgement(tenancyId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'Not authenticated' };
+    return { data: null, error: 'Not authenticated' };
   }
 
-  // Update tenancy to mark keys as received
-  const { error } = await supabase
-    .from('tenancies')
-    .update({
-      keys_received: true,
-      keys_received_at: new Date().toISOString(),
-    })
-    .eq('id', tenancyId)
-    .eq('tenant_user_id', user.id);
+  const { data, error } = await supabase
+    .from('move_in_acknowledgements')
+    .select('id, signed_at, condition_accepted')
+    .eq('tenancy_id', tenancyId)
+    .maybeSingle();
 
   if (error) {
-    return { success: false, error: error.message };
+    return { data: null, error: error.message };
   }
 
-  return { success: true, error: null };
+  return { data, error: null };
 }
 
 export async function submitMoveInAcknowledgement(data: {

@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import SignatureCanvas from 'react-signature-canvas';
-import { getTenantPendingTenancy, submitMoveInAcknowledgement, getPreviousTenantMoveOutPhotos } from './actions';
+import { getTenantPendingTenancy, submitMoveInAcknowledgement, getPreviousTenantMoveOutPhotos, getExistingAcknowledgement } from './actions';
 
 interface TenancyData {
   id: string;
@@ -30,6 +30,7 @@ interface PreviousMoveOutData {
 export default function MoveInAcknowledgementPage() {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [signed, setSigned] = useState(false);
+  const [alreadySigned, setAlreadySigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tenancyData, setTenancyData] = useState<TenancyData | null>(null);
   const [previousMoveOut, setPreviousMoveOut] = useState<PreviousMoveOutData | null>(null);
@@ -52,6 +53,14 @@ export default function MoveInAcknowledgementPage() {
       
       setTenancyData(result.data as TenancyData);
       
+      // Check if already acknowledged
+      const ackResult = await getExistingAcknowledgement(result.data.id);
+      if (!cancelled && ackResult.data) {
+        setAlreadySigned(true);
+        setLoading(false);
+        return;
+      }
+
       // Fetch previous tenant's move-out photos for this room
       if (result.data.room?.id) {
         const photosResult = await getPreviousTenantMoveOutPhotos(result.data.room.id);
@@ -134,19 +143,21 @@ export default function MoveInAcknowledgementPage() {
     );
   }
 
-  if (signed) {
+  if (signed || alreadySigned) {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-xl">
           <h1 className="text-2xl font-bold text-green-900 mb-2">
-            Move-In Acknowledgement Completed
+            Move-In Acknowledgement {alreadySigned ? 'Already Completed' : 'Completed'}
           </h1>
           <p className="text-green-800 mb-4">
-            Thank you for signing the move-in acknowledgement and confirming receipt of keys. Your tenancy is now active.
+            {alreadySigned
+              ? 'You have already signed the move-in acknowledgement for this tenancy. No further action is needed.'
+              : 'Thank you for signing the move-in acknowledgement and confirming receipt of keys. Your tenancy is now active.'}
           </p>
           <a
             href="/tenant"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 inline-block"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 inline-block transition-colors"
           >
             Back to Dashboard
           </a>
