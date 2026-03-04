@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 
@@ -43,7 +43,16 @@ const COMMON_AREAS = [
 ];
 
 export default function AdminInspectionsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>}>
+      <AdminInspectionsContent />
+    </Suspense>
+  );
+}
+
+function AdminInspectionsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [inspections, setInspections] = useState<InspectionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -58,7 +67,11 @@ export default function AdminInspectionsPage() {
   useEffect(() => {
     fetchInspections();
     fetchHouses();
-  }, []);
+    // Auto-open create form if ?create=true
+    if (searchParams.get('create') === 'true') {
+      setShowCreateForm(true);
+    }
+  }, [searchParams]);
 
   async function fetchInspections() {
     const supabase = createClient();
@@ -368,3 +381,4 @@ export default function AdminInspectionsPage() {
     </div>
   );
 }
+

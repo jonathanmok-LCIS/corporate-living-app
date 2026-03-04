@@ -231,11 +231,22 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Overview of properties, tenancies, and pending actions
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Overview of properties, tenancies, and pending actions
+          </p>
+        </div>
+        <Link
+          href="/admin/inspections?create=true"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-purple-700 active:bg-purple-800 transition-colors whitespace-nowrap"
+        >
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-5 w-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Inspection
+        </Link>
       </div>
 
       {/* KPI Row */}
