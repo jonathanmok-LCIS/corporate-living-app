@@ -1,211 +1,202 @@
-# Corporate Living Move In/Out App
+# Corporate Living App
 
-A web application for managing move-in and move-out processes in corporate living houses. Built with Next.js, TypeScript, Tailwind CSS, and Supabase.
+A modern web application for managing move-in/move-out processes, inspections, and tenancies across corporate living houses. Built with **Next.js 16**, **TypeScript**, **Tailwind CSS v4**, and **Supabase**.
+
+**Live**: [corporate-living-app.vercel.app](https://corporate-living-app.vercel.app)
+
+---
 
 ## Documentation
 
-- **[SETUP.md](./SETUP.md)** - Complete setup instructions
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
+| Document | Description |
+|----------|-------------|
+| [SETUP.md](./SETUP.md) | Local development setup |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Production deployment guide |
+| [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) | Database migration instructions |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Technical architecture overview |
+| [FEATURES.md](./FEATURES.md) | Feature implementation status |
+| [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) | Detailed implementation notes |
+
+---
 
 ## Features
 
-- **Tenant Portal**: Submit move-out intentions and sign move-in acknowledgements digitally
-- **Coordinator Portal**: Create and manage move-out inspections with checklists and photos
-- **Admin Portal**: Manage houses, rooms, tenancies, and coordinators
-- **Email Notifications**: Automated notifications for key events
-- **Role-Based Access**: Secure access control for Admin, Coordinator, and Tenant roles
-- **Mobile-Friendly**: Optimized for use on mobile devices, especially for signature capture
+### Three Role-Based Portals
+
+| Portal | Path | Colour | Description |
+|--------|------|--------|-------------|
+| **Admin** | `/admin` | Purple | Full property, tenancy, user and inspection management |
+| **Coordinator** | `/coordinator` | Green | Inspections and move-out reviews for assigned houses |
+| **Tenant** | `/tenant` | Blue | Move-out submission, move-in acknowledgement, dashboard |
+
+### Core Capabilities
+
+- **House Management** — CRUD, archive/restore, quick-setup wizard, room management with slot-based occupancy (capacity 1 or 2)
+- **Tenancy Lifecycle** — Create tenancies with room-slot selection, track status through OCCUPIED → MOVE_OUT_INTENDED → INSPECTION → MOVE_IN_PENDING → ENDED
+- **Move-Out Intentions** — Tenants submit planned dates with optional notes; damage/stain photo upload (required when damage reported); coordinator sign-off
+- **Inspections** — Dynamic room-based checklists auto-generated from house rooms; photo upload with client-side compression; draft → final workflow
+- **Move-In Acknowledgement** — New tenant views previous inspection, draws signature on canvas, records defects; duplicate-submission prevention
+- **6-Month Inspection Indicators** — Overdue / due-soon badges on house cards; alert banner on houses page; count in admin dashboard approval queue
+- **Email Notifications** — Automated notifications for move-out submissions and inspection completions
+- **User Management** — Admin can list, search and manage users; supports multiple roles per user (`roles TEXT[]`)
+- **Unified Design System** — Shared KpiCard, SectionCard, ActionList, StatusBadge components; consistent card styling; SVG house logo across all portals
+
+---
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 with App Router, React, TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Row Level Security)
-- **Signature Capture**: react-signature-canvas
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Language | TypeScript 5, React 19 (Server Components) |
+| Styling | Tailwind CSS v4, PostCSS |
+| Database | Supabase PostgreSQL with Row Level Security |
+| Auth | Supabase Auth (email/password, JWT, HTTP-only cookies) |
+| Storage | Supabase Storage (inspection photos, signatures, move-out photos) |
+| Signature | react-signature-canvas |
+| Image Processing | Client-side compression (imageCompression.ts) |
+| Deployment | Vercel (auto-deploy on push) |
 
-## Prerequisites
+---
 
-- Node.js 18+ and npm
-- A Supabase account (free tier works fine)
+## Quick Start
 
-## Setup Instructions
+### Prerequisites
 
-> Before running any commands, make sure you're in the project directory where `package.json` is located.
+- Node.js 18+
+- A Supabase project ([supabase.com](https://supabase.com))
 
-### 1. Clone the Repository
+### 1. Clone & Install
 
 ```bash
-git clone <repository-url>
-cd corporate-living-app  # ← IMPORTANT: Navigate into the folder!
-```
-
-### 2. Install Dependencies
-
-```bash
+git clone https://github.com/jonathanmok-LCIS/corporate-living-app.git
+cd corporate-living-app
 npm install
 ```
 
-### 3. Set Up Environment Variables
-
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Copy the environment template:
-   ```bash
-   cp .env.example .env.local
-   ```
-3. Edit `.env.local` with your Supabase credentials:
-   - **Project URL**: Settings → API → Project URL
-   - **Anon Key**: Settings → API → anon public key
-   - **Service Role Key**: Settings → API → service_role key (keep secret!)
-
-### 4. Run Database Migrations
-
-In your Supabase project dashboard:
-
-1. Go to **SQL Editor**
-2. Create a new query
-3. Copy and paste the contents of `supabase/migrations/001_initial_schema.sql`
-4. Run the query
-5. Repeat for `supabase/migrations/002_rls_policies.sql`
-
-Alternatively, if you have the Supabase CLI installed:
+### 2. Configure Environment
 
 ```bash
-supabase db push
+cp .env.example .env.local
 ```
 
-### 5. Set Up Storage Buckets (Optional)
+Edit `.env.local` with your Supabase credentials:
 
-For photo uploads and signature storage:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-1. Go to **Storage** in your Supabase dashboard
-2. Create a bucket named `inspection-photos`
-3. Create a bucket named `signatures`
-4. Set appropriate access policies for each bucket
+### 3. Run Migrations
 
-### 6. Run the Development Server
+In Supabase SQL Editor, execute the migration files in order from `supabase/migrations/`:
+
+```
+001_initial_schema.sql        → Core tables, enums, indexes, triggers
+002_rls_policies.sql          → Row Level Security policies
+003_sample_data.sql           → Optional sample data
+004–018                       → Incremental schema updates
+```
+
+See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for detailed instructions.
+
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Usage
+---
 
-### Initial Setup
-
-1. **Create an Admin User**: 
-   - Sign up through Supabase Auth
-   - Manually update your user role in the `profiles` table to `ADMIN`
-
-2. **Add Houses and Rooms**:
-   - Navigate to `/admin/houses`
-   - Create houses and add rooms with capacity (1 or 2 people)
-
-3. **Assign Coordinators**:
-   - Create coordinator users
-   - Assign them to specific houses
-
-### Workflows
-
-#### Move-Out Process (Tenant)
-
-1. Tenant navigates to `/tenant/move-out`
-2. Submits planned move-out date and optional notes
-3. System updates tenancy status to `MOVE_OUT_INTENDED`
-4. Coordinators and admins receive email notifications
-
-#### Move-Out Inspection (Coordinator)
-
-1. Coordinator creates a new inspection from `/coordinator/inspections`
-2. Completes the 7-item checklist (Yes/No with descriptions for No answers)
-3. Uploads photos of room condition (optional)
-4. Finalizes inspection (locks edits)
-5. System updates tenancy status to `MOVE_OUT_INSPECTION_FINAL`
-6. Admins receive email notification
-
-#### Move-In Acknowledgement (New Tenant)
-
-1. Admin assigns new tenant to room
-2. Tenant views latest inspection report at `/tenant/move-in`
-3. Tenant draws signature on phone/tablet
-4. System saves signature and creates acknowledgement record
-5. Tenancy status becomes `OCCUPIED`
-6. Admin and coordinator receive email notification
-
-## Database Schema
-
-### Main Tables
-
-- **profiles**: User information with roles (ADMIN, COORDINATOR, TENANT)
-- **houses**: Properties managed by the system
-- **rooms**: Individual rooms within houses
-- **house_coordinators**: Links coordinators to houses
-- **tenancies**: Tenant assignments to rooms with status tracking
-- **move_out_intentions**: Move-out submissions from tenants
-- **inspections**: Move-out inspection records
-- **inspection_checklist_items**: Checklist responses for each inspection
-- **inspection_photos**: Photos uploaded during inspections
-- **move_in_acknowledgements**: Digital signatures and move-in records
-
-### Tenancy Statuses
-
-- `OCCUPIED`: Tenant currently living in the room
-- `MOVE_OUT_INTENDED`: Tenant has submitted move-out intention
-- `MOVE_OUT_INSPECTION_DRAFT`: Inspection in progress
-- `MOVE_OUT_INSPECTION_FINAL`: Inspection completed and finalized
-- `MOVE_IN_PENDING_SIGNATURE`: New tenant assigned, awaiting signature
-- `ENDED`: Tenancy has ended
-
-## Security
-
-- Row Level Security (RLS) policies ensure users can only access appropriate data
-- Coordinators can only manage inspections for houses they're assigned to
-- Tenants can only view and modify their own tenancies
-- Admins have full access to all records
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
 corporate-living-app/
 ├── app/
-│   ├── admin/          # Admin portal pages
-│   ├── coordinator/    # Coordinator portal pages
-│   ├── tenant/         # Tenant portal pages
-│   └── layout.tsx      # Root layout
-├── components/         # Reusable React components
+│   ├── admin/              # Admin portal (purple)
+│   │   ├── houses/         # House CRUD, archive, quick-setup, detail + rooms
+│   │   ├── inspections/    # View/manage inspections
+│   │   ├── move-out-intentions/  # Review move-out submissions
+│   │   ├── tenancies/      # Tenancy management
+│   │   └── users/          # User management
+│   ├── coordinator/        # Coordinator portal (green)
+│   │   ├── inspections/    # Create and manage inspections
+│   │   └── move-out-reviews/  # Review move-outs for assigned houses
+│   ├── tenant/             # Tenant portal (blue)
+│   │   ├── move-in/        # Sign move-in acknowledgement
+│   │   └── move-out/       # Submit move-out intention
+│   ├── auth/               # Login, signup, server actions
+│   ├── api/                # API routes (notifications, signed URLs)
+│   └── dashboard/          # Role-based redirect to portal
+├── components/
+│   ├── dashboard/          # Shared UI: KpiCard, SectionCard, ActionList, StatusBadge
+│   ├── LogoutButton.tsx
+│   ├── MobileNav.tsx
+│   └── RoleSwitcher.tsx
 ├── lib/
-│   ├── supabase-browser.ts   # Supabase client (client-side)
-│   ├── supabase-server.ts    # Supabase client (server-side)
-│   ├── imageCompression.ts   # Image compression utilities
-│   └── types.ts              # TypeScript type definitions
+│   ├── supabase-server.ts  # Server-side Supabase client
+│   ├── supabase-browser.ts # Client-side Supabase client
+│   ├── imageCompression.ts # Photo compression utility
+│   ├── storage.ts          # Storage helpers
+│   └── types.ts            # Shared TypeScript types
 ├── supabase/
-│   └── migrations/     # Database migration files
-└── public/             # Static assets
+│   └── migrations/         # 22 SQL migration files (001–018 + legacy)
+└── middleware.ts            # Auth + route protection
 ```
 
-### Building for Production
+---
+
+## Database Schema
+
+### Tables (10)
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | User profiles with `roles TEXT[]` (ADMIN, COORDINATOR, TENANT) |
+| `houses` | Properties with `active` boolean for archive/restore |
+| `rooms` | Rooms with `label`, `capacity` (1 or 2), `active` flag |
+| `house_coordinators` | Many-to-many: coordinators ↔ houses |
+| `tenancies` | Tenant assignments with `slot` (A/B), lifecycle status |
+| `move_out_intentions` | Move-out submissions with date, notes, photos, damage tracking |
+| `inspections` | Room-based inspections with `status` (DRAFT/FINAL) |
+| `inspection_checklist_items` | Yes/No checklist items per inspection |
+| `inspection_photos` | Photos with URL and category |
+| `move_in_acknowledgements` | Signature, audit JSON, linked to inspection |
+
+### Tenancy Status Flow
+
+```
+OCCUPIED → MOVE_OUT_INTENDED → MOVE_OUT_INSPECTION_DRAFT → MOVE_OUT_INSPECTION_FINAL → MOVE_IN_PENDING_SIGNATURE → ENDED
+```
+
+---
+
+## Security
+
+- **Row Level Security (RLS)** on all tables with role-based policies
+- **Middleware** route protection with session validation
+- **Server Components** for data fetching (no sensitive data on client)
+- **Server Actions** for all mutations with auth checks
+- Coordinators restricted to assigned houses only
+- Tenants restricted to own records only
+- Finalized inspections are immutable
+
+---
+
+## Building for Production
 
 ```bash
 npm run build
 npm start
 ```
 
-## Deployment
+Deploy via **Vercel** (recommended) — auto-deploys on push to `main`. See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-This app can be deployed to:
-- **Vercel** (recommended for Next.js)
-- **Netlify**
-- Any platform that supports Node.js
-
-Make sure to set your environment variables in your deployment platform.
+---
 
 ## License
 
 MIT
-
-## Support
-
-For issues and questions, please open an issue on the repository.
