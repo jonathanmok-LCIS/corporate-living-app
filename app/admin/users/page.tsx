@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Profile, UserRole } from '@/lib/types';
-import { createUser, updateUser, deleteUser } from './actions';
+import { createUser, updateUser, deleteUser, resetUserPassword } from './actions';
 
 interface HouseCoordinator {
   house?: {
@@ -40,6 +40,8 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
@@ -140,11 +142,33 @@ export default function UsersPage() {
     }
   }
 
+  async function handleResetPassword() {
+    if (!editingId) return;
+    if (!confirm(`Reset password for "${formData.name}"? A new temporary password will be generated.`)) return;
+
+    setResettingPassword(true);
+    setError(null);
+    setTempPassword(null);
+
+    try {
+      const result = await resetUserPassword(editingId, formData.email);
+      if (result.error) throw new Error(result.error);
+      setTempPassword(result.tempPassword ?? null);
+      setSuccess('Password reset successfully!');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error resetting password.');
+    } finally {
+      setResettingPassword(false);
+    }
+  }
+
   function handleCancel() {
     setFormData({ email: '', name: '', password: '', roles: ['TENANT'] });
     setEditingId(null);
     setShowForm(false);
     setError(null);
+    setTempPassword(null);
   }
 
   function handleEdit(user: Profile) {
@@ -279,7 +303,26 @@ export default function UsersPage() {
                   Password {!editingId && '*'}
                 </label>
                 {editingId ? (
-                  <p className="text-sm text-gray-500">Password change not supported in edit mode. User can reset via login page.</p>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      disabled={resettingPassword || submitting}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      {resettingPassword ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                    {tempPassword && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-xs font-medium text-amber-800 mb-1">Temporary password (share securely with user):</p>
+                        <code className="block text-sm font-mono text-amber-900 bg-amber-100 px-2 py-1 rounded select-all">{tempPassword}</code>
+                        <p className="text-xs text-amber-600 mt-1">User will be prompted to change this on next login.</p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <input

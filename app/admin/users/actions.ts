@@ -135,6 +135,42 @@ export async function updateUser(data: UpdateUserData) {
   }
 }
 
+export async function resetUserPassword(userId: string, email: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    // Generate a new temporary password
+    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+
+    // Update the user's password via admin API
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { password: tempPassword }
+    );
+
+    if (updateError) {
+      console.error('Error resetting password:', updateError);
+      return { error: updateError.message || 'Failed to reset password' };
+    }
+
+    // Set force_password_reset flag so user must change on next login
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({ force_password_reset: true })
+      .eq('id', userId);
+
+    if (profileError) {
+      console.error('Error setting force_password_reset:', profileError);
+      // Non-fatal — password was already reset
+    }
+
+    return { success: true, tempPassword };
+  } catch (error) {
+    console.error('Unexpected error resetting password:', error);
+    return { error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+  }
+}
+
 export async function deleteUser(userId: string) {
   try {
     const supabaseAdmin = getAdminClient();
