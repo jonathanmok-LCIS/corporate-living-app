@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { login } from '../actions'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default async function LoginPage({
   searchParams,
 }: {
