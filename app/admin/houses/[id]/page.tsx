@@ -72,6 +72,8 @@ export default function HouseDetailPage() {
   const [roomError, setRoomError] = useState('');
   const [roomSaving, setRoomSaving] = useState(false);
   const [showArchivedRooms, setShowArchivedRooms] = useState(false);
+  const [roomSearchQuery, setRoomSearchQuery] = useState('');
+  const [roomOccupancyFilter, setRoomOccupancyFilter] = useState<'all' | 'occupied' | 'vacant'>('all');
 
   /* ---- coordinator ---------------------------------------------- */
   const [selectedCoordinator, setSelectedCoordinator] = useState('');
@@ -329,6 +331,27 @@ export default function HouseDetailPage() {
     const active = (r.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status));
     return s + active.reduce((rs, t) => rs + (t.rental_price ? parseFloat(t.rental_price) : 0), 0);
   }, 0);
+  const filteredActiveRooms = activeRooms.filter((room) => {
+    const activeTenancies = (room.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status));
+    const hasActiveTenancy = activeTenancies.length > 0;
+    const search = roomSearchQuery.trim().toLowerCase();
+
+    const matchesSearch =
+      search.length === 0 ||
+      room.label.toLowerCase().includes(search) ||
+      activeTenancies.some(
+        (tenancy) =>
+          tenancy.tenant?.name?.toLowerCase().includes(search) ||
+          tenancy.tenant?.email?.toLowerCase().includes(search)
+      );
+
+    const matchesOccupancy =
+      roomOccupancyFilter === 'all' ||
+      (roomOccupancyFilter === 'occupied' && hasActiveTenancy) ||
+      (roomOccupancyFilter === 'vacant' && !hasActiveTenancy);
+
+    return matchesSearch && matchesOccupancy;
+  });
 
   const assignedIds = coordinators.map((c) => c.user_id);
   const filteredAvailable = availableCoordinators.filter((c) => !assignedIds.includes(c.id));
@@ -591,6 +614,32 @@ export default function HouseDetailPage() {
           </button>
         </div>
 
+        <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr),220px] gap-3">
+            <input
+              type="text"
+              name="roomSearch"
+              value={roomSearchQuery}
+              onChange={(e) => setRoomSearchQuery(e.target.value)}
+              placeholder="Search room, tenant name, or email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            />
+            <select
+              name="roomOccupancyFilter"
+              value={roomOccupancyFilter}
+              onChange={(e) => setRoomOccupancyFilter(e.target.value as 'all' | 'occupied' | 'vacant')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            >
+              <option value="all">All occupancy</option>
+              <option value="occupied">Occupied</option>
+              <option value="vacant">Vacant</option>
+            </select>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            Showing {filteredActiveRooms.length} of {activeRooms.length} active rooms
+          </p>
+        </div>
+
         {/* Room Form (add or edit) */}
         {(addingRoom || editingRoomId) && (
           <div className="px-5 py-4 bg-purple-50/50 border-b border-purple-100">
@@ -675,7 +724,7 @@ export default function HouseDetailPage() {
               Add your first room →
             </button>
           </div>
-        ) : activeRooms.length > 0 ? (
+        ) : filteredActiveRooms.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -691,7 +740,7 @@ export default function HouseDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {activeRooms.map((room) => {
+                {filteredActiveRooms.map((room) => {
                   const activeTenancies = (room.tenancies || []).filter((t) =>
                     ACTIVE_STATUSES.includes(t.status)
                   );
@@ -826,7 +875,11 @@ export default function HouseDetailPage() {
               </tbody>
             </table>
           </div>
-        ) : null}
+        ) : (
+          <div className="px-5 py-10 text-center text-gray-400">
+            <p>No rooms match the current search.</p>
+          </div>
+        )}
 
         {/* Archived rooms */}
         {archivedRooms.length > 0 && (
