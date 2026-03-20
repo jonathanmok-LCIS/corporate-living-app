@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { createHouseFinancialSnapshot } from '../../actions';
 
 // Create admin client with service role key
 function getAdminClient() {
@@ -153,6 +154,12 @@ export async function addRoom(
       .single();
 
     if (error) return { data: null, error: error.message };
+
+    const snapshot = await createHouseFinancialSnapshot(houseId, `Room added: ${data.label.trim()}`);
+    if (snapshot.error) {
+      console.error('Failed to record financial snapshot after addRoom:', snapshot.error);
+    }
+
     return { data: room, error: null };
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
@@ -196,6 +203,12 @@ export async function updateRoom(
       .eq('id', roomId);
 
     if (error) return { error: error.message };
+
+    const snapshot = await createHouseFinancialSnapshot(existing.house_id, `Room updated: ${data.label.trim()}`);
+    if (snapshot.error) {
+      console.error('Failed to record financial snapshot after updateRoom:', snapshot.error);
+    }
+
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Unknown error' };
@@ -217,12 +230,26 @@ export async function archiveRoom(roomId: string): Promise<{ error: string | nul
       return { error: 'Cannot archive: room has active tenancies.' };
     }
 
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('house_id, label')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room) return { error: roomError?.message || 'Room not found' };
+
     const { error } = await supabaseAdmin
       .from('rooms')
       .update({ active: false })
       .eq('id', roomId);
 
     if (error) return { error: error.message };
+
+    const snapshot = await createHouseFinancialSnapshot(room.house_id, `Room archived: ${room.label}`);
+    if (snapshot.error) {
+      console.error('Failed to record financial snapshot after archiveRoom:', snapshot.error);
+    }
+
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Unknown error' };
@@ -233,12 +260,26 @@ export async function restoreRoom(roomId: string): Promise<{ error: string | nul
   try {
     const supabaseAdmin = getAdminClient();
 
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('house_id, label')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room) return { error: roomError?.message || 'Room not found' };
+
     const { error } = await supabaseAdmin
       .from('rooms')
       .update({ active: true })
       .eq('id', roomId);
 
     if (error) return { error: error.message };
+
+    const snapshot = await createHouseFinancialSnapshot(room.house_id, `Room restored: ${room.label}`);
+    if (snapshot.error) {
+      console.error('Failed to record financial snapshot after restoreRoom:', snapshot.error);
+    }
+
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Unknown error' };

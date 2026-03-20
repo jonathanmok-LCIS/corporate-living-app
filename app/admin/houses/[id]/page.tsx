@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { House, Profile, HouseCoordinator } from '@/lib/types';
@@ -25,7 +26,7 @@ interface Tenancy {
   end_date?: string;
   rental_price?: string;
   slot?: string;
-  tenant?: { name: string; email: string };
+  tenant?: { id: string; name: string; email: string };
 }
 
 interface RoomWithTenancies {
@@ -61,7 +62,7 @@ export default function HouseDetailPage() {
 
   /* ---- house inline editing ------------------------------------- */
   const [editingHouse, setEditingHouse] = useState(false);
-  const [houseForm, setHouseForm] = useState({ name: '', address: '' });
+  const [houseForm, setHouseForm] = useState({ name: '', address: '', monthly_cost: '' });
   const [houseError, setHouseError] = useState('');
   const [houseSaving, setHouseSaving] = useState(false);
 
@@ -135,7 +136,11 @@ export default function HouseDetailPage() {
 
   function startEditHouse() {
     if (!house) return;
-    setHouseForm({ name: house.name, address: house.address || '' });
+    setHouseForm({
+      name: house.name,
+      address: house.address || '',
+      monthly_cost: house.monthly_cost != null ? String(house.monthly_cost) : '',
+    });
     setHouseError('');
     setEditingHouse(true);
   }
@@ -149,12 +154,20 @@ export default function HouseDetailPage() {
       setHouseError('Address is required');
       return;
     }
+    const parsedCost = houseForm.monthly_cost.trim().length
+      ? parseFloat(houseForm.monthly_cost)
+      : null;
+    if (parsedCost != null && (Number.isNaN(parsedCost) || parsedCost < 0)) {
+      setHouseError('Monthly cost must be 0 or greater');
+      return;
+    }
     setHouseSaving(true);
     setHouseError('');
 
     const result = await updateHouseInfo(houseId, {
       name: houseForm.name.trim(),
       address: houseForm.address.trim(),
+      monthly_cost: parsedCost,
     });
 
     if (result.error) {
@@ -473,7 +486,7 @@ export default function HouseDetailPage() {
               {houseError}
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">House Name *</label>
               <input
@@ -490,6 +503,18 @@ export default function HouseDetailPage() {
                 value={houseForm.address}
                 onChange={(e) => setHouseForm({ ...houseForm, address: e.target.value })}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Cost</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={houseForm.monthly_cost}
+                onChange={(e) => setHouseForm({ ...houseForm, monthly_cost: e.target.value })}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                placeholder="0.00"
               />
             </div>
           </div>
@@ -516,6 +541,12 @@ export default function HouseDetailPage() {
             {house.address && <p className="text-gray-500 mt-1">{house.address}</p>}
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            <Link
+              href={`/admin/houses/${houseId}/rent-history`}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-medium transition"
+            >
+              Rent History
+            </Link>
             <button
               onClick={handleArchiveCheck}
               disabled={checkingArchive}
@@ -582,6 +613,14 @@ export default function HouseDetailPage() {
             ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-500 font-medium uppercase mt-1">Monthly Revenue</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm col-span-2 sm:col-span-1">
+          <p className="text-2xl font-bold text-gray-900">
+            {house.monthly_cost != null
+              ? `$${Number(house.monthly_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+              : '-'}
+          </p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Monthly Cost</p>
         </div>
       </div>
 
@@ -764,7 +803,16 @@ export default function HouseDetailPage() {
                           <div className="space-y-1">
                             {activeTenancies.map((t) => (
                               <div key={t.id}>
-                                <p className="text-gray-900">{t.tenant?.name || 'Unknown'}</p>
+                                {t.tenant ? (
+                                  <Link
+                                    href={`/admin/tenancies/tenant-history/${t.tenant.id}`}
+                                    className="text-gray-900 hover:text-purple-700 underline-offset-2 hover:underline"
+                                  >
+                                    {t.tenant.name || 'Unknown'}
+                                  </Link>
+                                ) : (
+                                  <p className="text-gray-900">Unknown</p>
+                                )}
                                 <p className="text-xs text-gray-400">{t.tenant?.email}</p>
                               </div>
                             ))}

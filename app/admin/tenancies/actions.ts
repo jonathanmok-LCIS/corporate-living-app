@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createHouseFinancialSnapshot } from '../houses/actions';
 
 // Helper to create admin client
 function getAdminClient() {
@@ -95,6 +96,24 @@ export async function createTenancy(tenancyData: {
       return { error: error.message };
     }
 
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('house_id, label')
+      .eq('id', tenancyData.room_id)
+      .single();
+
+    if (roomError) {
+      console.error('Failed to lookup room for financial snapshot:', roomError.message);
+    } else if (room?.house_id) {
+      const snapshot = await createHouseFinancialSnapshot(
+        room.house_id,
+        `Tenancy created for ${room.label}`
+      );
+      if (snapshot.error) {
+        console.error('Failed to record financial snapshot after tenancy creation:', snapshot.error);
+      }
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error('Error in createTenancy:', err);
@@ -138,5 +157,48 @@ export async function endTenancy(tenancyId: string) {
   } catch (err) {
     console.error('Error in endTenancy:', err);
     return { data: null, error: err instanceof Error ? err.message : 'Unknown error occurred' };
+  }
+}
+
+export async function fetchTenantTenancyHistory(tenantUserId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data: tenant, error: tenantError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email')
+      .eq('id', tenantUserId)
+      .single();
+
+    if (tenantError) {
+      return { tenant: null, data: null, error: tenantError.message };
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('tenancies')
+      .select(`
+        id,
+        start_date,
+        end_date,
+        status,
+        slot,
+        rental_price,
+        created_at,
+        room:rooms(id, label, house_id, house:houses(name))
+      `)
+      .eq('tenant_user_id', tenantUserId)
+      .order('start_date', { ascending: false });
+
+    if (error) {
+      return { tenant, data: null, error: error.message };
+    }
+
+    return { tenant, data: data || [], error: null };
+  } catch (err) {
+    return {
+      tenant: null,
+      data: null,
+      error: err instanceof Error ? err.message : 'Unknown error occurred',
+    };
   }
 }

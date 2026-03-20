@@ -54,6 +54,7 @@ export interface House {
   id: string;
   name: string;
   address?: string;
+  monthly_cost?: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;

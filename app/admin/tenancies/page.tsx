@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { Room, House, Profile, Tenancy, TenancyStatus, TENANCY_STATUS_LABELS } from '@/lib/types';
@@ -17,6 +18,7 @@ interface TenancyWithRelations extends Tenancy {
     house_id: string;
   };
   tenant?: {
+    id: string;
     name: string;
     email: string;
   };
@@ -440,9 +442,16 @@ export default function TenanciesPage() {
               filteredTenancies.map((tenancy) => (
                 <tr key={tenancy.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {tenancy.tenant?.name}
-                    </div>
+                    {tenancy.tenant ? (
+                      <Link
+                        href={`/admin/tenancies/tenant-history/${tenancy.tenant.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-purple-700 underline-offset-2 hover:underline"
+                      >
+                        {tenancy.tenant.name}
+                      </Link>
+                    ) : (
+                      <div className="text-sm font-medium text-gray-900">-</div>
+                    )}
                     <div className="text-sm text-gray-500">
                       {tenancy.tenant?.email}
                     </div>

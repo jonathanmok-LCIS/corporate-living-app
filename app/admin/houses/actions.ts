@@ -19,6 +19,116 @@ function getAdminClient() {
   });
 }
 
+function toMoney(value: number | null | undefined): number {
+  if (value == null || Number.isNaN(value)) return 0;
+  return Math.round(value * 100) / 100;
+}
+
+export async function createHouseFinancialSnapshot(
+  houseId: string,
+  note?: string
+): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data: house, error: houseError } = await supabaseAdmin
+      .from('houses')
+      .select('id, monthly_cost')
+      .eq('id', houseId)
+      .single();
+
+    if (houseError || !house) {
+      return { error: houseError?.message || 'House not found' };
+    }
+
+    const { data: rooms, error: roomsError } = await supabaseAdmin
+      .from('rooms')
+      .select('id, label, rental_price')
+      .eq('house_id', houseId)
+      .eq('active', true)
+      .order('label');
+
+    if (roomsError) return { error: roomsError.message };
+
+    const roomIds = (rooms || []).map((room) => room.id);
+    let activeTenancies: Array<{ room_id: string; rental_price: number | null }> = [];
+
+    if (roomIds.length > 0) {
+      const { data: tenancyRows, error: tenanciesError } = await supabaseAdmin
+        .from('tenancies')
+        .select('room_id, rental_price')
+        .in('room_id', roomIds)
+        .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING']);
+
+      if (tenanciesError) return { error: tenanciesError.message };
+      activeTenancies = tenancyRows || [];
+    }
+
+    const tenancySumByRoom = new Map<string, number>();
+    for (const tenancy of activeTenancies) {
+      const current = tenancySumByRoom.get(tenancy.room_id) || 0;
+      tenancySumByRoom.set(tenancy.room_id, toMoney(current + toMoney(tenancy.rental_price)));
+    }
+
+    const roomRents: Record<string, number> = {};
+    for (const room of rooms || []) {
+      const activeRent = tenancySumByRoom.get(room.id);
+      roomRents[room.label] = toMoney(activeRent ?? room.rental_price ?? 0);
+    }
+
+    const receivableAmount = toMoney(Object.values(roomRents).reduce((sum, amount) => sum + amount, 0));
+
+    const { error: insertError } = await supabaseAdmin
+      .from('house_financial_history')
+      .insert({
+        house_id: houseId,
+        monthly_cost: house.monthly_cost,
+        receivable_amount: receivableAmount,
+        room_rents: roomRents,
+        note: note || null,
+      });
+
+    if (insertError) return { error: insertError.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function fetchHouseFinancialHistory(houseId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data: house, error: houseError } = await supabaseAdmin
+      .from('houses')
+      .select('id, name, monthly_cost')
+      .eq('id', houseId)
+      .single();
+
+    if (houseError) {
+      return { house: null, data: null, error: houseError.message };
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('house_financial_history')
+      .select('id, recorded_at, monthly_cost, receivable_amount, room_rents, note')
+      .eq('house_id', houseId)
+      .order('recorded_at', { ascending: false });
+
+    if (error) {
+      return { house, data: null, error: error.message };
+    }
+
+    return { house, data: data || [], error: null };
+  } catch (err) {
+    return {
+      house: null,
+      data: null,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    };
+  }
+}
+
 export async function fetchHousesAdmin() {
   try {
     const supabaseAdmin = getAdminClient();
@@ -474,7 +584,7 @@ export async function checkDuplicateHouse(
  */
 export async function updateHouseInfo(
   houseId: string,
-  data: { name: string; address: string }
+  data: { name: string; address: string; monthly_cost?: number | null }
 ): Promise<{ error: string | null }> {
   try {
     const supabaseAdmin = getAdminClient();
@@ -488,10 +598,20 @@ export async function updateHouseInfo(
 
     const { error } = await supabaseAdmin
       .from('houses')
-      .update({ name: data.name.trim(), address: data.address.trim() })
+      .update({
+        name: data.name.trim(),
+        address: data.address.trim(),
+        monthly_cost: data.monthly_cost ?? null,
+      })
       .eq('id', houseId);
 
     if (error) return { error: error.message };
+
+    const snapshot = await createHouseFinancialSnapshot(houseId, 'House details updated');
+    if (snapshot.error) {
+      console.error('Failed to record house financial snapshot:', snapshot.error);
+    }
+
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Unknown error' };
