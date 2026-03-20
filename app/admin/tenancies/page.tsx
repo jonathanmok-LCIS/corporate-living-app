@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { Room, House, Profile, Tenancy } from '@/lib/types';
+import { Room, House, Profile, Tenancy, TenancyStatus, TENANCY_STATUS_LABELS } from '@/lib/types';
 import { createTenancy, fetchTenanciesAdmin, endTenancy } from './actions';
 
 const isSupabaseConfigured = () => {
@@ -31,7 +31,7 @@ export default function TenanciesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'OCCUPIED' | 'MOVE_OUT_INTENDED' | 'ENDED'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | TenancyStatus>('all');
   const [houseFilter, setHouseFilter] = useState<'all' | string>('all');
   const [formData, setFormData] = useState({
     room_id: '',
@@ -257,13 +257,13 @@ export default function TenanciesPage() {
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'OCCUPIED' | 'MOVE_OUT_INTENDED' | 'ENDED')}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
           >
             <option value="all">All statuses</option>
-            <option value="OCCUPIED">Occupied</option>
-            <option value="MOVE_OUT_INTENDED">Move Out Intended</option>
-            <option value="ENDED">Ended</option>
+            {Object.entries(TENANCY_STATUS_LABELS).map(([status, label]) => (
+              <option key={status} value={status}>{label}</option>
+            ))}
           </select>
           <select
             value={houseFilter}
