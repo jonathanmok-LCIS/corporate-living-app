@@ -247,7 +247,6 @@ export default function MoveOutReviewsPage() {
         .eq('id', intentionId);
 
       if (error) throw error;
-
       // Update tenancy status to MOVE_OUT_APPROVED
       const intention = intentions.find(i => i.id === intentionId);
       if (intention?.tenancy?.id) {
@@ -258,6 +257,23 @@ export default function MoveOutReviewsPage() {
         if (tenancyError) {
           console.error('Error updating tenancy status:', tenancyError);
         }
+      }
+
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'move_out_reviewed',
+            data: {
+              intentionId,
+              status: 'APPROVED',
+              recipients: ['TENANT', 'ADMIN'],
+            },
+          }),
+        });
+      } catch (notificationError) {
+        console.error('Notification trigger failed:', notificationError);
       }
 
       alert('Move-out intention approved successfully!');
@@ -318,6 +334,23 @@ export default function MoveOutReviewsPage() {
         if (tenancyError) {
           console.error('Error reverting tenancy status:', tenancyError);
         }
+      }
+
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'move_out_reviewed',
+            data: {
+              intentionId,
+              status: 'REJECTED',
+              recipients: ['TENANT', 'ADMIN'],
+            },
+          }),
+        });
+      } catch (notificationError) {
+        console.error('Notification trigger failed:', notificationError);
       }
 
       alert('Move-out intention rejected');

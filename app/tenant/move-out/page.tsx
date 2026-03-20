@@ -251,6 +251,25 @@ export default function MoveOutIntentionPage() {
         throw new Error(submitResult.error || 'Failed to submit move-out intention');
       }
 
+      // Trigger notification event for coordinator/admin processing.
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'move_out_intention',
+            data: {
+              tenancyId: tenancy.id,
+              plannedMoveOutDate: formData.plannedMoveOutDate,
+              recipients: ['COORDINATOR', 'ADMIN'],
+              isResubmission: existingIntention?.sign_off_status === 'REJECTED',
+            },
+          }),
+        });
+      } catch (notificationError) {
+        console.error('Notification trigger failed:', notificationError);
+      }
+
       // Success!
       setSubmitted(true);
     } catch (err) {

@@ -14,6 +14,7 @@ interface TenancyWithRelations extends Tenancy {
   room?: {
     id: string;
     label: string;
+    house_id: string;
   };
   tenant?: {
     name: string;
@@ -29,6 +30,9 @@ export default function TenanciesPage() {
   const [tenants, setTenants] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'OCCUPIED' | 'MOVE_OUT_INTENDED' | 'ENDED'>('all');
+  const [houseFilter, setHouseFilter] = useState<'all' | string>('all');
   const [formData, setFormData] = useState({
     room_id: '',
     slot: '' as '' | 'A' | 'B',
@@ -214,6 +218,21 @@ export default function TenanciesPage() {
   }
 
   const selectedRoom = rooms.find(r => r.id === formData.room_id);
+  const filteredTenancies = tenancies.filter((tenancy) => {
+    const house = houses.find((h) => h.id === tenancy.room?.house_id);
+    const search = searchQuery.toLowerCase();
+    const matchesSearch =
+      search.trim().length === 0 ||
+      tenancy.tenant?.name?.toLowerCase().includes(search) ||
+      tenancy.tenant?.email?.toLowerCase().includes(search) ||
+      tenancy.room?.label?.toLowerCase().includes(search) ||
+      house?.name?.toLowerCase().includes(search);
+
+    const matchesStatus = statusFilter === 'all' || tenancy.status === statusFilter;
+    const matchesHouse = houseFilter === 'all' || tenancy.room?.house_id === houseFilter;
+
+    return matchesSearch && matchesStatus && matchesHouse;
+  });
 
   return (
     <div className="space-y-6">
@@ -225,6 +244,43 @@ export default function TenanciesPage() {
         >
           {showForm ? 'Cancel' : 'Create Tenancy'}
         </button>
+      </div>
+
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tenant, email, room, or house"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'OCCUPIED' | 'MOVE_OUT_INTENDED' | 'ENDED')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+          >
+            <option value="all">All statuses</option>
+            <option value="OCCUPIED">Occupied</option>
+            <option value="MOVE_OUT_INTENDED">Move Out Intended</option>
+            <option value="ENDED">Ended</option>
+          </select>
+          <select
+            value={houseFilter}
+            onChange={(e) => setHouseFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+          >
+            <option value="all">All houses</option>
+            {houses.map((house) => (
+              <option key={house.id} value={house.id}>
+                {house.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="mt-3 text-sm text-gray-600">
+          Showing {filteredTenancies.length} of {tenancies.length} tenancies
+        </p>
       </div>
 
       {showForm && (
@@ -374,14 +430,14 @@ export default function TenanciesPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tenancies.length === 0 ? (
+            {filteredTenancies.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  No tenancies found. Create a tenancy to get started.
+                  No tenancies match the current filters.
                 </td>
               </tr>
             ) : (
-              tenancies.map((tenancy) => (
+              filteredTenancies.map((tenancy) => (
                 <tr key={tenancy.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">

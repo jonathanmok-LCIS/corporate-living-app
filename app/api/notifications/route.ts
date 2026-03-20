@@ -21,6 +21,11 @@ export async function POST(request: NextRequest) {
         console.log('Sending move-out intention notification to:', data.recipients);
         break;
 
+      case 'move_out_reviewed':
+        // Send review outcome back to tenant and admins
+        console.log('Sending move-out review notification to:', data.recipients, 'status:', data.status);
+        break;
+
       case 'inspection_finalized':
         // Send email to admins
         console.log('Sending inspection finalized notification to:', data.recipients);
