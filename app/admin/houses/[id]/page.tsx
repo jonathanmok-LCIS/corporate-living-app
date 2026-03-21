@@ -542,16 +542,10 @@ export default function HouseDetailPage() {
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <Link
-              href={`/admin/houses/${houseId}/rent-calculator`}
+              href={`/admin/houses/${houseId}/rent-review`}
               className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-medium transition"
             >
-              Rent Calculator
-            </Link>
-            <Link
-              href={`/admin/houses/${houseId}/rent-history`}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-medium transition"
-            >
-              Rent History
+              Rent Review
             </Link>
             <button
               onClick={handleArchiveCheck}

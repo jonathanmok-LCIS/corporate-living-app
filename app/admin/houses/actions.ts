@@ -24,6 +24,71 @@ function toMoney(value: number | null | undefined): number {
   return Math.round(value * 100) / 100;
 }
 
+type RentReviewInputRow = {
+  roomId: string;
+  roomLabel: string;
+  weighting: number;
+  calculatedRent: number;
+  finalRent: number;
+};
+
+type SaveRentReviewPayload = {
+  houseId: string;
+  effectiveDate?: string | null;
+  currentRentalCost: number;
+  projectedRentalCost: number;
+  bufferPercentage: number;
+  totalWeighting: number;
+  rows: RentReviewInputRow[];
+  note?: string | null;
+  status: 'DRAFT' | 'APPLIED';
+};
+
+export async function saveHouseRentReview(payload: SaveRentReviewPayload): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    if (!payload.houseId) return { error: 'houseId is required' };
+    if (!payload.rows || payload.rows.length === 0) return { error: 'At least one room is required' };
+
+    const { data: house, error: houseError } = await supabaseAdmin
+      .from('houses')
+      .select('id, monthly_cost')
+      .eq('id', payload.houseId)
+      .single();
+
+    if (houseError || !house) return { error: houseError?.message || 'House not found' };
+
+    const roomRents: Record<string, number> = {};
+    for (const row of payload.rows) {
+      roomRents[row.roomLabel] = toMoney(row.finalRent);
+    }
+
+    const receivableAmount = toMoney(payload.rows.reduce((sum, row) => sum + toMoney(row.finalRent), 0));
+
+    const { error } = await supabaseAdmin
+      .from('house_financial_history')
+      .insert({
+        house_id: payload.houseId,
+        effective_date: payload.effectiveDate || null,
+        review_status: payload.status,
+        monthly_cost: house.monthly_cost,
+        current_rental_cost: toMoney(payload.currentRentalCost),
+        projected_rental_cost: toMoney(payload.projectedRentalCost),
+        buffer_percentage: payload.bufferPercentage,
+        total_weighting: payload.totalWeighting,
+        receivable_amount: receivableAmount,
+        room_rents: roomRents,
+        note: payload.note || null,
+      });
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
 export async function createHouseFinancialSnapshot(
   houseId: string,
   note?: string
@@ -111,7 +176,7 @@ export async function fetchHouseFinancialHistory(houseId: string) {
 
     const { data, error } = await supabaseAdmin
       .from('house_financial_history')
-      .select('id, recorded_at, monthly_cost, receivable_amount, room_rents, note')
+      .select('id, recorded_at, effective_date, review_status, monthly_cost, current_rental_cost, projected_rental_cost, buffer_percentage, total_weighting, receivable_amount, room_rents, note')
       .eq('house_id', houseId)
       .order('recorded_at', { ascending: false });
 
