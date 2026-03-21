@@ -200,3 +200,57 @@ export async function deleteUser(userId: string) {
     return { error: error instanceof Error ? error.message : 'An unexpected error occurred' };
   }
 }
+
+export async function fetchUserHistory(userId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email, roles, created_at')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      return { profile: null, tenancies: null, coordinatorHouses: null, error: profileError.message };
+    }
+
+    const { data: tenancies, error: tenanciesError } = await supabaseAdmin
+      .from('tenancies')
+      .select(`
+        id,
+        start_date,
+        end_date,
+        status,
+        slot,
+        rental_price,
+        created_at,
+        room:rooms(label, house:houses(name))
+      `)
+      .eq('tenant_user_id', userId)
+      .order('start_date', { ascending: false });
+
+    if (tenanciesError) {
+      return { profile, tenancies: null, coordinatorHouses: null, error: tenanciesError.message };
+    }
+
+    const { data: coordinatorHouses, error: coordinatorError } = await supabaseAdmin
+      .from('house_coordinators')
+      .select('house:houses(name), created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (coordinatorError) {
+      return { profile, tenancies, coordinatorHouses: null, error: coordinatorError.message };
+    }
+
+    return { profile, tenancies: tenancies || [], coordinatorHouses: coordinatorHouses || [], error: null };
+  } catch (error) {
+    return {
+      profile: null,
+      tenancies: null,
+      coordinatorHouses: null,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}

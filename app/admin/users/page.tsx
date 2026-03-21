@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Profile, UserRole } from '@/lib/types';
 import { createUser, updateUser, deleteUser, resetUserPassword } from './actions';
@@ -42,6 +43,7 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
@@ -231,6 +233,16 @@ export default function UsersPage() {
     return <div className="text-center py-8">Loading...</div>;
   }
 
+  const filteredUsers = users.filter((user) => {
+    const search = searchQuery.trim().toLowerCase();
+    if (!search) return true;
+    return (
+      user.name.toLowerCase().includes(search) ||
+      user.email.toLowerCase().includes(search) ||
+      (user.roles || []).some((role) => role.toLowerCase().includes(search))
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -249,6 +261,16 @@ export default function UsersPage() {
           <p className="text-green-800">{success}</p>
         </div>
       )}
+
+      <div className="bg-white p-4 rounded-lg shadow">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search users by name, email, or role"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        />
+      </div>
 
       {/* Error Message */}
       {error && (
@@ -433,14 +455,14 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  No users found. Create your first user to get started.
+                  {users.length === 0 ? 'No users found. Create your first user to get started.' : 'No users match your search.'}
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
+              filteredUsers.map((user) => {
                 const userWithRelations = user as UserWithRelations;
 
                 // Get house assignments based on roles
@@ -465,7 +487,12 @@ export default function UsersPage() {
                 return (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                      <Link
+                        href={`/admin/users/history/${user.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-purple-700 underline-offset-2 hover:underline"
+                      >
+                        {user.name}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{user.email}</div>
