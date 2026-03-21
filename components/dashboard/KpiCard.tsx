@@ -25,7 +25,7 @@ export default function KpiCard({ label, value, icon, color = 'gray', subtitle, 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 flex items-start gap-4">
       <div className={`flex-shrink-0 rounded-lg p-2.5 ${c.bg}`}>
-        <div className={`h-6 w-6 ${c.icon}`}>{icon}</div>
+        <div className={`h-6 w-6 flex items-center justify-center ${c.icon}`}>{icon}</div>
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium text-gray-500 truncate">{label}</p>

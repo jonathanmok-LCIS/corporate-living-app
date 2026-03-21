@@ -156,7 +156,7 @@ export default function HouseDetailPage() {
       ? parseFloat(houseForm.monthly_cost)
       : null;
     if (parsedCost != null && (Number.isNaN(parsedCost) || parsedCost < 0)) {
-      setHouseError('Weekly cost must be 0 or greater');
+      setHouseError('Weekly rental cost must be 0 or greater');
       return;
     }
     setHouseSaving(true);
@@ -483,7 +483,7 @@ export default function HouseDetailPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Weekly Cost</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Weekly Rental Cost</label>
               <input
                 type="number"
                 min="0"
@@ -579,7 +579,7 @@ export default function HouseDetailPage() {
               ? `$${Number(house.monthly_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
               : '-'}
           </p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Weekly Cost</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Weekly Rental Cost</p>
         </div>
       </div>
 

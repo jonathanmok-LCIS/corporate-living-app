@@ -290,6 +290,7 @@ export interface HouseWithStats {
   pendingMoveOuts: number;
   pendingInspections: number;
   lastInspectionDate: string | null;
+  totalWeeklyRent: number; // sum of active tenancy rental_price values
 }
 
 /** Fetches all active houses with aggregated room/tenancy/coordinator stats.
@@ -332,11 +333,11 @@ export async function fetchHousesWithStats(): Promise<{
     }
 
     // Phase 3: Tenancy data (needs roomIds from phase 2)
-    let tenancyRows: { id: string; room_id: string }[] = [];
+    let tenancyRows: { id: string; room_id: string; rental_price: number | null }[] = [];
     if (allRoomIds.length > 0) {
       const { data: t } = await supabaseAdmin
         .from('tenancies')
-        .select('id, room_id')
+        .select('id, room_id, rental_price')
         .in('room_id', allRoomIds)
         .in('status', ['ACTIVE', 'MOVE_OUT_REQUESTED', 'MOVE_OUT_APPROVED', 'INSPECTION_PENDING'])
         .lte('start_date', today)
@@ -397,6 +398,14 @@ export async function fetchHousesWithStats(): Promise<{
       if (i.house_id && !latestByHouse.has(i.house_id)) latestByHouse.set(i.house_id, i.finalised_at);
     }
 
+    const rentByHouse = new Map<string, number>();
+    for (const t of tenancyRows) {
+      const rm = roomMap.get(t.room_id);
+      if (rm && t.rental_price) {
+        rentByHouse.set(rm.house_id, (rentByHouse.get(rm.house_id) || 0) + t.rental_price);
+      }
+    }
+
     const result: HouseWithStats[] = houses.map((h) => ({
       id: h.id,
       name: h.name,
@@ -407,6 +416,7 @@ export async function fetchHousesWithStats(): Promise<{
       pendingMoveOuts: moByHouse.get(h.id) || 0,
       pendingInspections: draftByHouse.get(h.id) || 0,
       lastInspectionDate: latestByHouse.get(h.id) || null,
+      totalWeeklyRent: rentByHouse.get(h.id) || 0,
     }));
 
     return { data: result, error: null };

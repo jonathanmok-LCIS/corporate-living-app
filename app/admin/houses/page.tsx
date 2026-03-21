@@ -7,6 +7,7 @@ import { fetchHousesWithStats, type HouseWithStats } from './actions';
 export default function HousesPage() {
   const [houses, setHouses] = useState<HouseWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRentModal, setShowRentModal] = useState(false);
 
   useEffect(() => {
     loadHouses();
@@ -77,6 +78,15 @@ export default function HousesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">Houses</h1>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowRentModal(true)}
+            className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Current Rent
+          </button>
           <Link
             href="/admin/houses/archived"
             className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm transition-colors"
@@ -167,13 +177,18 @@ export default function HousesPage() {
                   <p className="text-[11px] text-gray-500 font-medium uppercase">Available</p>
                 </div>
 
-                {/* Occupied */}
-                <div className="bg-gray-50 rounded-lg py-2">
-                  <p className="text-lg font-bold text-gray-900">
-                    {house.occupiedSlots}
-                  </p>
-                  <p className="text-[11px] text-gray-500 font-medium uppercase">Occupied</p>
-                </div>
+                {/* Pending Actions */}
+                {(() => {
+                  const totalPending = house.pendingMoveOuts + house.pendingInspections;
+                  return (
+                    <div className={`rounded-lg py-2 ${totalPending > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                      <p className={`text-lg font-bold ${totalPending > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                        {totalPending > 0 ? totalPending : '—'}
+                      </p>
+                      <p className="text-[11px] text-gray-500 font-medium uppercase">Pending</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Coordinators */}
                 <div className="bg-gray-50 rounded-lg py-2">
@@ -246,6 +261,56 @@ export default function HousesPage() {
           );
         })}
       </div>
+      {/* Current Rent Modal */}
+      {showRentModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">Current Rent Overview</h2>
+              <button
+                onClick={() => setShowRentModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Table */}
+            <div className="overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">House</th>
+                    <th className="text-right px-6 py-3 font-medium text-gray-500">Weekly Rent</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {houses.map((h) => (
+                    <tr key={h.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-gray-900">{h.name}</td>
+                      <td className="px-6 py-3 text-right font-medium text-gray-900">
+                        {h.totalWeeklyRent > 0
+                          ? `$${h.totalWeeklyRent.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t-2 border-gray-200 bg-gray-50">
+                  <tr>
+                    <td className="px-6 py-3 font-semibold text-gray-900">Total</td>
+                    <td className="px-6 py-3 text-right font-bold text-purple-700">
+                      ${houses.reduce((s, h) => s + h.totalWeeklyRent, 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
