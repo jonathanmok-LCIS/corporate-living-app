@@ -321,11 +321,11 @@ export default function HouseRentReviewPage() {
 
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <label className="text-sm text-gray-700">
-          Rental Cost
+          Current Weekly Cost
           <input type="number" min="0" step="0.01" value={currentRentalCost} onChange={(e) => setCurrentRentalCost(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
         </label>
         <label className="text-sm text-gray-700">
-          Projected Rental Cost
+          Projected Weekly Cost
           <input type="number" min="0" step="0.01" value={projectedRentalCost} onChange={(e) => setProjectedRentalCost(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
         </label>
         <label className="text-sm text-gray-700">
@@ -339,7 +339,7 @@ export default function HouseRentReviewPage() {
       </div>
 
       <div className="text-xs text-gray-500">
-        Formula: projected rent * (room weighting / total weighting) * (1 + buffer percentage / 100)
+        Formula: projected weekly rent * (room weighting / total weighting) * (1 + buffer percentage / 100)
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
@@ -347,10 +347,10 @@ export default function HouseRentReviewPage() {
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="text-left px-4 py-2.5 font-medium text-gray-500">Bedroom</th>
-              <th className="text-right px-4 py-2.5 font-medium text-gray-500">Current Rent</th>
+              <th className="text-right px-4 py-2.5 font-medium text-gray-500">Current Weekly Rent</th>
               <th className="text-right px-4 py-2.5 font-medium text-gray-500">Weighting</th>
               <th className="text-right px-4 py-2.5 font-medium text-gray-500">Calculation</th>
-              <th className="text-right px-4 py-2.5 font-medium text-gray-500">Final Rent (Manual)</th>
+              <th className="text-right px-4 py-2.5 font-medium text-gray-500">Final Weekly Rent (Manual)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -410,7 +410,7 @@ export default function HouseRentReviewPage() {
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Effective Date</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Status</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Cost</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-500">Projected Rent</th>
+                <th className="text-right px-4 py-2.5 font-medium text-gray-500">Projected Weekly Rent</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Buffer %</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Receivable</th>
                 {roomColumns.map((label) => (

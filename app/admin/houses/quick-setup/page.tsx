@@ -862,7 +862,7 @@ function QuickSetupContent() {
               <p className="text-2xl font-bold text-green-700">
                 ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-green-600 font-medium">Est. Monthly Revenue</p>
+              <p className="text-xs text-green-600 font-medium">Est. Weekly Revenue</p>
             </div>
           </div>
 

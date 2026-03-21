@@ -34,6 +34,11 @@ export interface Profile {
   id: string;
   email: string;
   name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  preferred_name?: string | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
   roles: UserRole[];  // Changed from single role to array of roles
   force_password_reset?: boolean;
   created_at: string;

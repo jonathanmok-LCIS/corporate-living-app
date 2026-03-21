@@ -1,0 +1,9 @@
+{
+  "models": [
+    {
+      "title": "Local Llama",
+      "provider": "ollama",
+      "model": "llama3"
+    }
+  ]
+}

@@ -73,7 +73,7 @@ export default function TenantHistoryPage() {
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Slot</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Start Date</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">End Date</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-500">Rent</th>
+                <th className="text-right px-4 py-2.5 font-medium text-gray-500">Weekly Rent</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Status</th>
               </tr>
             </thead>

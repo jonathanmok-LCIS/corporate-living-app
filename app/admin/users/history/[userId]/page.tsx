@@ -28,13 +28,20 @@ type CoordinatorRow = {
   created_at: string;
 };
 
+function fullLegalName(firstName?: string | null, lastName?: string | null, fallback?: string | null) {
+  const legal = `${firstName || ''} ${lastName || ''}`.trim();
+  return legal || fallback || 'User';
+}
+
 export default function UserHistoryPage() {
   const params = useParams();
   const userId = params.userId as string;
 
   const [name, setName] = useState('User');
+  const [preferredName, setPreferredName] = useState('');
   const [email, setEmail] = useState('');
   const [roles, setRoles] = useState<string[]>([]);
+  const [isArchived, setIsArchived] = useState(false);
   const [tenancies, setTenancies] = useState<TenancyRow[]>([]);
   const [coordinatorHouses, setCoordinatorHouses] = useState<CoordinatorRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,9 +53,11 @@ export default function UserHistoryPage() {
       if (result.error) {
         setError(result.error);
       } else {
-        setName(result.profile?.name || 'User');
+        setName(fullLegalName(result.profile?.first_name, result.profile?.last_name, result.profile?.name));
+        setPreferredName(result.profile?.preferred_name || '');
         setEmail(result.profile?.email || '');
         setRoles(result.profile?.roles || []);
+        setIsArchived(Boolean(result.profile?.is_archived));
         setTenancies((result.tenancies || []) as TenancyRow[]);
         setCoordinatorHouses((result.coordinatorHouses || []) as CoordinatorRow[]);
       }
@@ -71,7 +80,9 @@ export default function UserHistoryPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">User History</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {name}{email ? ` (${email})` : ''}
+          {name}
+          {preferredName ? ` (Preferred: ${preferredName})` : ''}
+          {email ? ` (${email})` : ''}
         </p>
       </div>
 
@@ -82,8 +93,8 @@ export default function UserHistoryPage() {
       {!error && (
         <>
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2">Roles</h2>
-            <div className="flex flex-wrap gap-2">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2">Roles and Status</h2>
+            <div className="flex flex-wrap gap-2 mb-2">
               {roles.length === 0 ? (
                 <span className="text-sm text-gray-500">No roles</span>
               ) : (
@@ -94,6 +105,11 @@ export default function UserHistoryPage() {
                 ))
               )}
             </div>
+            <span className={`inline-flex px-2 py-1 text-xs rounded-full font-semibold ${
+              isArchived ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+            }`}>
+              {isArchived ? 'Archived' : 'Active'}
+            </span>
           </div>
 
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
@@ -109,7 +125,7 @@ export default function UserHistoryPage() {
                   <th className="text-left px-4 py-2.5 font-medium text-gray-500">Status</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-500">Start</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-500">End</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-gray-500">Rent</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-500">Weekly Rent</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

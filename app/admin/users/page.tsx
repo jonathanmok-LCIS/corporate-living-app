@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Profile, UserRole } from '@/lib/types';
-import { createUser, updateUser, deleteUser, resetUserPassword } from './actions';
+import {
+  archiveUser,
+  createUser,
+  deleteUser,
+  reactivateUser,
+  resetUserPassword,
+  updateUser,
+} from './actions';
 
 interface HouseCoordinator {
   house?: {
@@ -27,6 +34,26 @@ interface UserWithRelations extends Profile {
   tenancies?: TenancyWithRoom[];
 }
 
+function splitDisplayName(name: string) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return { firstName: '', lastName: '' };
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
+}
+
+function getLegalName(user: Profile) {
+  const fullLegal = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+  return fullLegal || user.name;
+}
+
+function getDisplayName(user: Profile) {
+  return user.preferred_name?.trim() || getLegalName(user);
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +61,9 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
-    name: '',
+    firstName: '',
+    lastName: '',
+    preferredName: '',
     password: '',
     roles: ['TENANT'] as UserRole[],
   });
@@ -55,7 +84,7 @@ export default function UsersPage() {
 
   async function fetchUsers() {
     const supabase = createClient();
-    
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -90,11 +119,10 @@ export default function UsersPage() {
     setError(null);
     setSuccess(null);
     setSubmitting(true);
-    
+
     try {
-      // Validate form
-      if (!formData.name) {
-        throw new Error('Please fill in the name field');
+      if (!formData.firstName || !formData.lastName) {
+        throw new Error('Please fill in legal first name and legal last name');
       }
 
       if (!editingId && (!formData.email || !formData.password)) {
@@ -111,30 +139,41 @@ export default function UsersPage() {
 
       let result;
       if (editingId) {
-        // Update existing user
         result = await updateUser({
           id: editingId,
-          name: formData.name,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          preferredName: formData.preferredName,
           roles: formData.roles,
         });
       } else {
-        // Create new user
-        result = await createUser(formData);
+        result = await createUser({
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          preferredName: formData.preferredName,
+          password: formData.password,
+          roles: formData.roles,
+        });
       }
-      
+
       if (result.error) {
         throw new Error(result.error);
       }
 
       setSuccess(editingId ? 'User updated successfully!' : 'User created successfully!');
-      setFormData({ email: '', name: '', password: '', roles: ['TENANT'] });
+      setFormData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        preferredName: '',
+        password: '',
+        roles: ['TENANT'],
+      });
       setEditingId(null);
       setShowForm(false);
-      
-      // Refresh users list
-      await fetchUsers();
 
-      // Clear success message after 3 seconds
+      await fetchUsers();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error saving user:', err);
@@ -146,7 +185,8 @@ export default function UsersPage() {
 
   async function handleResetPassword() {
     if (!editingId) return;
-    if (!confirm(`Reset password for "${formData.name}"? A new temporary password will be generated.`)) return;
+    const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ').trim();
+    if (!confirm(`Reset password for "${fullName}"? A new temporary password will be generated.`)) return;
 
     setResettingPassword(true);
     setError(null);
@@ -166,7 +206,14 @@ export default function UsersPage() {
   }
 
   function handleCancel() {
-    setFormData({ email: '', name: '', password: '', roles: ['TENANT'] });
+    setFormData({
+      email: '',
+      firstName: '',
+      lastName: '',
+      preferredName: '',
+      password: '',
+      roles: ['TENANT'],
+    });
     setEditingId(null);
     setShowForm(false);
     setError(null);
@@ -174,9 +221,12 @@ export default function UsersPage() {
   }
 
   function handleEdit(user: Profile) {
+    const parsed = splitDisplayName(user.name || '');
     setFormData({
       email: user.email,
-      name: user.name,
+      firstName: user.first_name || parsed.firstName,
+      lastName: user.last_name || parsed.lastName,
+      preferredName: user.preferred_name || '',
       password: '',
       roles: user.roles || ['TENANT'],
     });
@@ -204,17 +254,34 @@ export default function UsersPage() {
     }
   }
 
+  async function handleArchiveToggle(user: Profile) {
+    const action = user.is_archived ? 'reactivate' : 'archive';
+    if (!confirm(`Are you sure you want to ${action} user "${getDisplayName(user)}"?`)) {
+      return;
+    }
+
+    try {
+      const result = user.is_archived ? await reactivateUser(user.id) : await archiveUser(user.id);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      setSuccess(user.is_archived ? 'User reactivated successfully!' : 'User archived successfully!');
+      await fetchUsers();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error updating user status:', err);
+      setError(err instanceof Error ? err.message : 'Error updating user status. Please try again.');
+    }
+  }
+
   function toggleRole(role: UserRole) {
-    setFormData(prev => {
+    setFormData((prev) => {
       const currentRoles = prev.roles;
       if (currentRoles.includes(role)) {
-        // Remove role (but keep at least one)
-        const newRoles = currentRoles.filter(r => r !== role);
+        const newRoles = currentRoles.filter((r) => r !== role);
         return { ...prev, roles: newRoles.length > 0 ? newRoles : currentRoles };
-      } else {
-        // Add role
-        return { ...prev, roles: [...currentRoles, role] };
       }
+      return { ...prev, roles: [...currentRoles, role] };
     });
   }
 
@@ -238,7 +305,11 @@ export default function UsersPage() {
     if (!search) return true;
     return (
       user.name.toLowerCase().includes(search) ||
+      (user.first_name || '').toLowerCase().includes(search) ||
+      (user.last_name || '').toLowerCase().includes(search) ||
+      (user.preferred_name || '').toLowerCase().includes(search) ||
       user.email.toLowerCase().includes(search) ||
+      (user.is_archived ? 'archived' : 'active').includes(search) ||
       (user.roles || []).some((role) => role.toLowerCase().includes(search))
     );
   });
@@ -255,7 +326,6 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Success Message */}
       {success && (
         <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
           <p className="text-green-800">{success}</p>
@@ -267,19 +337,17 @@ export default function UsersPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search users by name, email, or role"
+          placeholder="Search users by legal name, preferred name, email, role, or status"
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
         />
       </div>
 
-      {/* Error Message */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
           <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      {/* Create/Edit User Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -307,15 +375,44 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">
-                  Full Name *
+                  Legal First Name *
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="John Doe"
+                  placeholder="John"
                   required
+                  disabled={submitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Legal Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Smith"
+                  required
+                  disabled={submitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Preferred Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.preferredName}
+                  onChange={(e) => setFormData({ ...formData, preferredName: e.target.value })}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md text-gray-900 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="What they prefer to be called"
                   disabled={submitting}
                 />
               </div>
@@ -428,129 +525,150 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Users List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Roles
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                House Assignment
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.length === 0 ? (
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  {users.length === 0 ? 'No users found. Create your first user to get started.' : 'No users match your search.'}
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Legal Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Preferred Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Roles
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  House Assignment
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ) : (
-              filteredUsers.map((user) => {
-                const userWithRelations = user as UserWithRelations;
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    {users.length === 0 ? 'No users found. Create your first user to get started.' : 'No users match your search.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => {
+                  const userWithRelations = user as UserWithRelations;
 
-                // Get house assignments based on roles
-                let houseAssignments: string[] = [];
-                
-                if (userWithRelations.roles?.includes('COORDINATOR') && userWithRelations.house_coordinators) {
-                  houseAssignments = userWithRelations.house_coordinators
-                    .map((hc) => hc.house?.name)
-                    .filter((name): name is string => name !== undefined);
-                } else if ((userWithRelations.roles?.includes('TENANT') || userWithRelations.roles?.includes('COORDINATOR')) && userWithRelations.tenancies) {
-                  // Get active tenancies only
-                  const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'ACTIVE');
-                  houseAssignments = activeTenancies
-                    .map((t) => {
-                      const houseName = t.room?.house?.name;
-                      const roomLabel = t.room?.label;
-                      return houseName && roomLabel ? `${houseName} - ${roomLabel}` : null;
-                    })
-                    .filter((name): name is string => name !== null);
-                }
+                  let houseAssignments: string[] = [];
 
-                return (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/admin/users/history/${user.id}`}
-                        className="text-sm font-medium text-gray-900 hover:text-purple-700 underline-offset-2 hover:underline"
-                      >
-                        {user.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-wrap gap-1">
-                        {(user.roles || []).map((role) => (
-                          <span
-                            key={role}
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              role === 'ADMIN'
-                                ? 'bg-purple-100 text-purple-800'
-                                : role === 'COORDINATOR'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {houseAssignments.length > 0 ? (
-                          <div className="space-y-1">
-                            {houseAssignments.map((assignment, idx) => (
-                              <div key={idx}>{assignment}</div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">None</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="text-purple-600 hover:text-purple-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id, user.name)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                  if (userWithRelations.roles?.includes('COORDINATOR') && userWithRelations.house_coordinators) {
+                    houseAssignments = userWithRelations.house_coordinators
+                      .map((hc) => hc.house?.name)
+                      .filter((name): name is string => name !== undefined);
+                  } else if ((userWithRelations.roles?.includes('TENANT') || userWithRelations.roles?.includes('COORDINATOR')) && userWithRelations.tenancies) {
+                    const activeTenancies = userWithRelations.tenancies.filter((t) => t.status === 'ACTIVE');
+                    houseAssignments = activeTenancies
+                      .map((t) => {
+                        const houseName = t.room?.house?.name;
+                        const roomLabel = t.room?.label;
+                        return houseName && roomLabel ? `${houseName} - ${roomLabel}` : null;
+                      })
+                      .filter((name): name is string => name !== null);
+                  }
+
+                  return (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Link
+                          href={`/admin/users/history/${user.id}`}
+                          className="text-sm font-medium text-gray-900 hover:text-purple-700 underline-offset-2 hover:underline"
+                        >
+                          {getLegalName(user)}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{user.preferred_name || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{user.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1">
+                          {(user.roles || []).map((role) => (
+                            <span
+                              key={role}
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                role === 'ADMIN'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : role === 'COORDINATOR'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {houseAssignments.length > 0 ? (
+                            <div className="space-y-1">
+                              {houseAssignments.map((assignment, idx) => (
+                                <div key={idx}>{assignment}</div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">None</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          user.is_archived
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {user.is_archived ? 'Archived' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="text-purple-600 hover:text-purple-900 mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleArchiveToggle(user)}
+                          className="text-amber-600 hover:text-amber-900 mr-4"
+                        >
+                          {user.is_archived ? 'Reactivate' : 'Archive'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id, getDisplayName(user))}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

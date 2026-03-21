@@ -160,23 +160,19 @@ export default function HousesPage() {
               {/* KPI row */}
               <div className="px-5 pb-4 grid grid-cols-3 gap-3 text-center">
                 {/* Slots */}
-                <div className="bg-gray-50 rounded-lg py-2">
-                  <p className="text-lg font-bold text-gray-900">
-                    {house.occupiedSlots}/{house.totalSlots}
-                  </p>
-                  <p className="text-[11px] text-gray-500 font-medium uppercase">Occupied</p>
-                </div>
-
-                {/* Available */}
-                <div
-                  className={`rounded-lg py-2 ${available > 0 ? 'bg-green-50' : 'bg-gray-50'}`}
-                >
-                  <p
-                    className={`text-lg font-bold ${available > 0 ? 'text-green-700' : 'text-gray-400'}`}
-                  >
-                    {available}
+                <div className={`rounded-lg py-2 ${available > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
+                  <p className={`text-lg font-bold ${available > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                    {available}/{house.totalSlots}
                   </p>
                   <p className="text-[11px] text-gray-500 font-medium uppercase">Available</p>
+                </div>
+
+                {/* Occupied */}
+                <div className="bg-gray-50 rounded-lg py-2">
+                  <p className="text-lg font-bold text-gray-900">
+                    {house.occupiedSlots}
+                  </p>
+                  <p className="text-[11px] text-gray-500 font-medium uppercase">Occupied</p>
                 </div>
 
                 {/* Coordinators */}

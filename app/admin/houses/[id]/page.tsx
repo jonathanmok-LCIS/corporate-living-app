@@ -156,7 +156,7 @@ export default function HouseDetailPage() {
       ? parseFloat(houseForm.monthly_cost)
       : null;
     if (parsedCost != null && (Number.isNaN(parsedCost) || parsedCost < 0)) {
-      setHouseError('Monthly cost must be 0 or greater');
+      setHouseError('Weekly cost must be 0 or greater');
       return;
     }
     setHouseSaving(true);
@@ -337,6 +337,7 @@ export default function HouseDetailPage() {
   const occupiedSlots = activeRooms.reduce((s, r) => {
     return s + (r.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status)).length;
   }, 0);
+  const availableSlots = Math.max(totalSlots - occupiedSlots, 0);
   const totalRevenue = activeRooms.reduce((s, r) => {
     const active = (r.tenancies || []).filter((t) => ACTIVE_STATUSES.includes(t.status));
     return s + active.reduce((rs, t) => rs + (t.rental_price ? parseFloat(t.rental_price) : 0), 0);
@@ -482,7 +483,7 @@ export default function HouseDetailPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Cost</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Weekly Cost</label>
               <input
                 type="number"
                 min="0"
@@ -562,15 +563,15 @@ export default function HouseDetailPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-purple-700">
-            {occupiedSlots}/{totalSlots}
+            {availableSlots}/{totalSlots}
           </p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Occupied</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Available</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-gray-900">
             ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Monthly Revenue</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Weekly Revenue</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm col-span-2 sm:col-span-1">
           <p className="text-2xl font-bold text-gray-900">
@@ -578,7 +579,7 @@ export default function HouseDetailPage() {
               ? `$${Number(house.monthly_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
               : '-'}
           </p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Monthly Cost</p>
+          <p className="text-xs text-gray-500 font-medium uppercase mt-1">Weekly Cost</p>
         </div>
       </div>
 

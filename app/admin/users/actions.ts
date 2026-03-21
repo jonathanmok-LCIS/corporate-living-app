@@ -4,16 +4,46 @@ import { UserRole } from '@/lib/types';
 
 interface CreateUserData {
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  preferredName?: string;
   password: string;
   roles: UserRole[];
 }
 
 interface UpdateUserData {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  preferredName?: string;
   roles: UserRole[];
 }
+
+function buildFullName(firstName: string, lastName: string) {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
+type TenancyHistoryRow = {
+  id: string;
+  start_date: string;
+  end_date: string | null;
+  status: string;
+  slot: string | null;
+  rental_price: number | null;
+  created_at: string;
+  room?: {
+    label?: string;
+    house?: {
+      name?: string;
+    };
+  };
+};
+
+type MoveOutRow = {
+  tenancy_id: string;
+  planned_move_out_date: string;
+  submitted_at: string;
+};
 
 function getAdminClient() {
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
@@ -78,13 +108,26 @@ export async function createUser(data: CreateUserData) {
       return { error: 'User creation failed - no user data returned' };
     }
 
+    const firstName = data.firstName.trim();
+    const lastName = data.lastName.trim();
+    const fullName = buildFullName(firstName, lastName);
+
+    if (!firstName || !lastName) {
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      return { error: 'Legal first name and legal last name are required' };
+    }
+
     // Create the profile record using admin client to bypass RLS
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert([{
         id: authData.user.id,
         email: data.email,
-        name: data.name,
+        name: fullName,
+        first_name: firstName,
+        last_name: lastName,
+        preferred_name: data.preferredName?.trim() || null,
+        is_archived: false,
         roles: data.roles,
         force_password_reset: true,
       }]);
@@ -114,11 +157,21 @@ export async function updateUser(data: UpdateUserData) {
       return { error: 'At least one role is required' };
     }
 
+    const firstName = data.firstName.trim();
+    const lastName = data.lastName.trim();
+
+    if (!firstName || !lastName) {
+      return { error: 'Legal first name and legal last name are required' };
+    }
+
     // Update the profile record
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({
-        name: data.name,
+        name: buildFullName(firstName, lastName),
+        first_name: firstName,
+        last_name: lastName,
+        preferred_name: data.preferredName?.trim() || null,
         roles: data.roles,
       })
       .eq('id', data.id);
@@ -207,7 +260,7 @@ export async function fetchUserHistory(userId: string) {
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, email, roles, created_at')
+      .select('id, name, first_name, last_name, preferred_name, email, roles, created_at, is_archived, archived_at')
       .eq('id', userId)
       .single();
 
@@ -234,6 +287,33 @@ export async function fetchUserHistory(userId: string) {
       return { profile, tenancies: null, coordinatorHouses: null, error: tenanciesError.message };
     }
 
+    const tenancyRows = (tenancies || []) as TenancyHistoryRow[];
+    const tenancyIds = tenancyRows.map((tenancy: TenancyHistoryRow) => tenancy.id);
+    let moveOutMap: Record<string, string> = {};
+
+    if (tenancyIds.length > 0) {
+      const { data: moveOutRows, error: moveOutError } = await supabaseAdmin
+        .from('move_out_intentions')
+        .select('tenancy_id, planned_move_out_date, submitted_at')
+        .in('tenancy_id', tenancyIds)
+        .order('submitted_at', { ascending: false });
+
+      if (moveOutError) {
+        return { profile, tenancies, coordinatorHouses: null, error: moveOutError.message };
+      }
+
+      for (const row of (moveOutRows || []) as MoveOutRow[]) {
+        if (!moveOutMap[row.tenancy_id]) {
+          moveOutMap[row.tenancy_id] = row.planned_move_out_date;
+        }
+      }
+    }
+
+    const tenanciesWithMoveOutDate = tenancyRows.map((tenancy: TenancyHistoryRow) => ({
+      ...tenancy,
+      end_date: moveOutMap[tenancy.id] || tenancy.end_date,
+    }));
+
     const { data: coordinatorHouses, error: coordinatorError } = await supabaseAdmin
       .from('house_coordinators')
       .select('house:houses(name), created_at')
@@ -244,7 +324,7 @@ export async function fetchUserHistory(userId: string) {
       return { profile, tenancies, coordinatorHouses: null, error: coordinatorError.message };
     }
 
-    return { profile, tenancies: tenancies || [], coordinatorHouses: coordinatorHouses || [], error: null };
+    return { profile, tenancies: tenanciesWithMoveOutDate, coordinatorHouses: coordinatorHouses || [], error: null };
   } catch (error) {
     return {
       profile: null,
@@ -252,5 +332,51 @@ export async function fetchUserHistory(userId: string) {
       coordinatorHouses: null,
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
     };
+  }
+}
+
+export async function archiveUser(userId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      return { error: error.message || 'Failed to archive user' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error archiving user:', error);
+    return { error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+  }
+}
+
+export async function reactivateUser(userId: string) {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_archived: false,
+        archived_at: null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      return { error: error.message || 'Failed to reactivate user' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Unexpected error reactivating user:', error);
+    return { error: error instanceof Error ? error.message : 'An unexpected error occurred' };
   }
 }
