@@ -5,7 +5,12 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { fetchRoomsWithTenancies } from '../rooms/actions';
-import { fetchHouseFinancialHistory, saveHouseRentReview } from '../../actions';
+import {
+  deleteHouseRentReviewRecord,
+  fetchHouseFinancialHistory,
+  saveHouseRentReview,
+  updateHouseRentReviewRecord,
+} from '../../actions';
 
 type TenancyLite = {
   status: string;
@@ -30,7 +35,6 @@ type CalculatorRow = {
 
 type HistoryRow = {
   id: string;
-  recorded_at: string;
   effective_date?: string | null;
   review_status?: 'DRAFT' | 'APPLIED';
   monthly_cost: number | null;
@@ -69,6 +73,15 @@ export default function HouseRentReviewPage() {
   const [note, setNote] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editEffectiveDate, setEditEffectiveDate] = useState('');
+  const [editStatus, setEditStatus] = useState<'DRAFT' | 'APPLIED'>('DRAFT');
+  const [editRentalCost, setEditRentalCost] = useState('0');
+  const [editProjectedRent, setEditProjectedRent] = useState('0');
+  const [editBuffer, setEditBuffer] = useState('0');
+  const [editNote, setEditNote] = useState('');
+  const [updatingRecord, setUpdatingRecord] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -234,6 +247,52 @@ export default function HouseRentReviewPage() {
     alert(status === 'DRAFT' ? 'Draft saved' : 'Applied and recorded in rent review history');
   }
 
+  function startEdit(row: HistoryRow) {
+    setEditingRecordId(row.id);
+    setEditEffectiveDate(row.effective_date || '');
+    setEditStatus(row.review_status || 'APPLIED');
+    setEditRentalCost(String(row.current_rental_cost ?? 0));
+    setEditProjectedRent(String(row.projected_rental_cost ?? 0));
+    setEditBuffer(String(row.buffer_percentage ?? 0));
+    setEditNote(row.note || '');
+  }
+
+  async function saveEdit(recordId: string) {
+    setUpdatingRecord(true);
+    const result = await updateHouseRentReviewRecord({
+      id: recordId,
+      effectiveDate: editEffectiveDate || null,
+      status: editStatus,
+      rentalCost: Number(editRentalCost || 0),
+      projectedRentalCost: Number(editProjectedRent || 0),
+      bufferPercentage: Number(editBuffer || 0),
+      note: editNote || null,
+    });
+    setUpdatingRecord(false);
+
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
+
+    setEditingRecordId(null);
+    await loadHistory(houseId);
+  }
+
+  async function deleteRecord(recordId: string) {
+    if (!confirm('Delete this rent review record?')) return;
+    setDeletingRecordId(recordId);
+    const result = await deleteHouseRentReviewRecord(recordId);
+    setDeletingRecordId(null);
+
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
+
+    await loadHistory(houseId);
+  }
+
   if (loading) {
     return <div className="text-center py-8">Loading rent review...</div>;
   }
@@ -262,7 +321,7 @@ export default function HouseRentReviewPage() {
 
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <label className="text-sm text-gray-700">
-          Current Rental Cost
+          Rental Cost
           <input type="number" min="0" step="0.01" value={currentRentalCost} onChange={(e) => setCurrentRentalCost(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
         </label>
         <label className="text-sm text-gray-700">
@@ -274,7 +333,7 @@ export default function HouseRentReviewPage() {
           <input type="number" min="0" step="0.01" value={bufferPercentage} onChange={(e) => setBufferPercentage(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
         </label>
         <label className="text-sm text-gray-700">
-          Effective Date (Record Only)
+          Effective Date
           <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
         </label>
       </div>
@@ -348,11 +407,9 @@ export default function HouseRentReviewPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Recorded</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Effective Date</th>
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Status</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Cost</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-500">Current Rent</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Projected Rent</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Buffer %</th>
                 <th className="text-right px-4 py-2.5 font-medium text-gray-500">Receivable</th>
@@ -360,28 +417,64 @@ export default function HouseRentReviewPage() {
                   <th key={label} className="text-right px-4 py-2.5 font-medium text-gray-500">{label}</th>
                 ))}
                 <th className="text-left px-4 py-2.5 font-medium text-gray-500">Note</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {historyRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10 + roomColumns.length} className="px-4 py-8 text-center text-gray-500">No rent review records yet.</td>
+                  <td colSpan={9 + roomColumns.length} className="px-4 py-8 text-center text-gray-500">No rent review records yet.</td>
                 </tr>
               ) : (
                 historyRows.map((row) => (
                   <tr key={row.id}>
-                    <td className="px-4 py-3 text-gray-700">{new Date(row.recorded_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.effective_date ? new Date(row.effective_date).toLocaleDateString() : '-'}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.review_status || 'APPLIED'}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.monthly_cost != null ? `$${Number(row.monthly_cost).toFixed(2)}` : '-'}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.current_rental_cost != null ? `$${Number(row.current_rental_cost).toFixed(2)}` : '-'}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.projected_rental_cost != null ? `$${Number(row.projected_rental_cost).toFixed(2)}` : '-'}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.buffer_percentage != null ? `${Number(row.buffer_percentage).toFixed(2)}%` : '-'}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">${Number(row.receivable_amount || 0).toFixed(2)}</td>
+                    {editingRecordId === row.id ? (
+                      <>
+                        <td className="px-4 py-3"><input type="date" value={editEffectiveDate} onChange={(e) => setEditEffectiveDate(e.target.value)} className="w-36 px-2 py-1 border border-gray-300 rounded" /></td>
+                        <td className="px-4 py-3">
+                          <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'DRAFT' | 'APPLIED')} className="px-2 py-1 border border-gray-300 rounded">
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="APPLIED">APPLIED</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-right"><input type="number" step="0.01" value={editRentalCost} onChange={(e) => setEditRentalCost(e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-right" /></td>
+                        <td className="px-4 py-3 text-right"><input type="number" step="0.01" value={editProjectedRent} onChange={(e) => setEditProjectedRent(e.target.value)} className="w-28 px-2 py-1 border border-gray-300 rounded text-right" /></td>
+                        <td className="px-4 py-3 text-right"><input type="number" step="0.01" value={editBuffer} onChange={(e) => setEditBuffer(e.target.value)} className="w-24 px-2 py-1 border border-gray-300 rounded text-right" /></td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">${Number(row.receivable_amount || 0).toFixed(2)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 text-gray-700">{row.effective_date ? new Date(row.effective_date).toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3 text-gray-700">{row.review_status || 'APPLIED'}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{row.current_rental_cost != null ? `$${Number(row.current_rental_cost).toFixed(2)}` : '-'}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{row.projected_rental_cost != null ? `$${Number(row.projected_rental_cost).toFixed(2)}` : '-'}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{row.buffer_percentage != null ? `${Number(row.buffer_percentage).toFixed(2)}%` : '-'}</td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">${Number(row.receivable_amount || 0).toFixed(2)}</td>
+                      </>
+                    )}
                     {roomColumns.map((label) => (
                       <td key={`${row.id}-${label}`} className="px-4 py-3 text-right text-gray-700">{row.room_rents?.[label] != null ? `$${Number(row.room_rents[label]).toFixed(2)}` : '-'}</td>
                     ))}
-                    <td className="px-4 py-3 text-gray-500">{row.note || '-'}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {editingRecordId === row.id ? (
+                        <input value={editNote} onChange={(e) => setEditNote(e.target.value)} className="w-52 px-2 py-1 border border-gray-300 rounded" />
+                      ) : (
+                        row.note || '-'
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {editingRecordId === row.id ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => saveEdit(row.id)} disabled={updatingRecord} className="text-purple-700 hover:text-purple-900 text-xs font-medium">{updatingRecord ? 'Saving...' : 'Save'}</button>
+                          <button onClick={() => setEditingRecordId(null)} className="text-gray-600 hover:text-gray-900 text-xs font-medium">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={() => startEdit(row)} className="text-blue-700 hover:text-blue-900 text-xs font-medium">Edit</button>
+                          <button onClick={() => deleteRecord(row.id)} disabled={deletingRecordId === row.id} className="text-red-700 hover:text-red-900 text-xs font-medium">{deletingRecordId === row.id ? 'Deleting...' : 'Delete'}</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

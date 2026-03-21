@@ -44,6 +44,16 @@ type SaveRentReviewPayload = {
   status: 'DRAFT' | 'APPLIED';
 };
 
+type UpdateRentReviewPayload = {
+  id: string;
+  effectiveDate?: string | null;
+  status?: 'DRAFT' | 'APPLIED';
+  rentalCost?: number | null;
+  projectedRentalCost?: number | null;
+  bufferPercentage?: number | null;
+  note?: string | null;
+};
+
 export async function saveHouseRentReview(payload: SaveRentReviewPayload): Promise<{ error: string | null }> {
   try {
     const supabaseAdmin = getAdminClient();
@@ -81,6 +91,59 @@ export async function saveHouseRentReview(payload: SaveRentReviewPayload): Promi
         room_rents: roomRents,
         note: payload.note || null,
       });
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function updateHouseRentReviewRecord(
+  payload: UpdateRentReviewPayload
+): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+
+    if (!payload.id) return { error: 'Record id is required' };
+
+    const updateData: {
+      effective_date?: string | null;
+      review_status?: 'DRAFT' | 'APPLIED';
+      current_rental_cost?: number | null;
+      projected_rental_cost?: number | null;
+      buffer_percentage?: number | null;
+      note?: string | null;
+    } = {};
+
+    if (payload.effectiveDate !== undefined) updateData.effective_date = payload.effectiveDate;
+    if (payload.status !== undefined) updateData.review_status = payload.status;
+    if (payload.rentalCost !== undefined) updateData.current_rental_cost = payload.rentalCost;
+    if (payload.projectedRentalCost !== undefined) updateData.projected_rental_cost = payload.projectedRentalCost;
+    if (payload.bufferPercentage !== undefined) updateData.buffer_percentage = payload.bufferPercentage;
+    if (payload.note !== undefined) updateData.note = payload.note;
+
+    const { error } = await supabaseAdmin
+      .from('house_financial_history')
+      .update(updateData)
+      .eq('id', payload.id);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+export async function deleteHouseRentReviewRecord(recordId: string): Promise<{ error: string | null }> {
+  try {
+    const supabaseAdmin = getAdminClient();
+    if (!recordId) return { error: 'Record id is required' };
+
+    const { error } = await supabaseAdmin
+      .from('house_financial_history')
+      .delete()
+      .eq('id', recordId);
 
     if (error) return { error: error.message };
     return { error: null };
