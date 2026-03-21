@@ -38,6 +38,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
     </svg>
   ),
+  mail: (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7l9 6 9-6m-18 0v10a2 2 0 002 2h14a2 2 0 002-2V7m-18 0a2 2 0 012-2h14a2 2 0 012 2" />
+    </svg>
+  ),
   alert: (
     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-5 w-5">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -62,6 +67,7 @@ interface DashboardData {
   pendingSignatures: number;
   draftInspections: number;
   overdueInspections: number;
+  failedEmails: number;
   // Recent activity
   recentMoveOuts: { id: string; tenant_name: string; house_name: string; room_label: string; planned_date: string; status: string }[];
   recentInspections: { id: string; house_name: string; status: string; created_at: string }[];
@@ -101,6 +107,7 @@ export default function AdminDashboard() {
         recentInspRes,
         allHousesRes,
         finalInspRes,
+        emailFailuresRes,
       ] = await Promise.all([
         supabase.from('houses').select('id', { count: 'exact', head: true }).eq('is_archived', false),
         supabase.from('rooms').select('id, house_id, capacity').eq('active', true),
@@ -112,6 +119,7 @@ export default function AdminDashboard() {
         supabase.from('inspections').select('id, status, created_at, house:houses(name)').order('created_at', { ascending: false }).limit(5),
         supabase.from('houses').select('id').eq('is_archived', false),
         supabase.from('inspections').select('house_id, finalised_at').eq('status', 'FINAL').order('finalised_at', { ascending: false }),
+        supabase.from('email_notifications').select('id', { count: 'exact', head: true }).eq('status', 'FAILED'),
       ]);
 
       // Compute overdue inspections (>6 months since last FINAL or never inspected)
@@ -142,6 +150,7 @@ export default function AdminDashboard() {
         pendingSignatures: signaturesRes.count || 0,
         draftInspections: inspDraftRes.count || 0,
         overdueInspections: overdueCount,
+        failedEmails: emailFailuresRes.count || 0,
         recentMoveOuts: (recentMoveOutsRes.data || []).map((m: Record<string, unknown>) => {
           const tenancy = m.tenancy as Record<string, unknown> | null;
           const room = tenancy?.room as Record<string, unknown> | null;
@@ -172,7 +181,7 @@ export default function AdminDashboard() {
   }, []);
 
   const occupancyPct = data && data.totalRooms > 0 ? Math.round((data.occupiedRooms / data.totalRooms) * 100) : 0;
-  const totalPending = data ? data.moveOutIntentions + data.pendingSignatures + data.draftInspections + data.overdueInspections : 0;
+  const totalPending = data ? data.moveOutIntentions + data.pendingSignatures + data.draftInspections + data.overdueInspections + data.failedEmails : 0;
 
   /* ── Build action items for approval queue ─────────────────────── */
   const actionItems: ActionItem[] = [];
@@ -211,6 +220,15 @@ export default function AdminDashboard() {
         href: '/admin/houses',
         badge: { label: 'Overdue', variant: 'red', pulse: true },
         icon: <div className="text-red-500">{icons.clipboard}</div>,
+      });
+    }
+    if (data.failedEmails > 0) {
+      actionItems.push({
+        id: 'failed-emails',
+        title: `${data.failedEmails} email notification${data.failedEmails !== 1 ? 's' : ''} failed`,
+        href: '/admin/notifications',
+        badge: { label: 'Attention', variant: 'red', pulse: true },
+        icon: <div className="text-red-500">{icons.mail}</div>,
       });
     }
   }
@@ -254,6 +272,7 @@ export default function AdminDashboard() {
     { href: '/admin/users', label: 'Users', icon: icons.users, color: 'text-blue-600', bg: 'bg-blue-50' },
     { href: '/admin/inspections', label: 'Inspections', icon: icons.clipboard, color: 'text-green-600', bg: 'bg-green-50' },
     { href: '/admin/move-out-intentions', label: 'Move-Outs', icon: icons.moveOut, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { href: '/admin/notifications', label: 'Notifications', icon: icons.mail, color: 'text-red-600', bg: 'bg-red-50' },
   ];
 
   return (
@@ -267,11 +286,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <KpiCard label="Total Houses" value={data?.totalHouses ?? '—'} icon={icons.home} color="purple" loading={loading} />
         <KpiCard label="Active Tenancies" value={data?.activeTenancies ?? '—'} icon={icons.key} color="blue" loading={loading} />
         <KpiCard label="Occupancy" value={loading ? '—' : `${occupancyPct}%`} icon={icons.chart} color="green" loading={loading} subtitle={data ? `${data.occupiedRooms} of ${data.totalRooms} slots` : undefined} />
         <KpiCard label="Pending Actions" value={loading ? '—' : totalPending} icon={icons.alert} color={totalPending > 0 ? 'orange' : 'gray'} loading={loading} />
+        <KpiCard label="Email Failures" value={loading ? '—' : (data?.failedEmails ?? 0)} icon={icons.mail} color={data && data.failedEmails > 0 ? 'red' : 'gray'} loading={loading} />
       </div>
 
       {/* Approval Queue + Recent Activity */}
@@ -309,7 +329,7 @@ export default function AdminDashboard() {
       {/* Quick Links */}
       <div>
         <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Quick Links</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {quickLinks.map((link) => (
             <Link
               key={link.href}

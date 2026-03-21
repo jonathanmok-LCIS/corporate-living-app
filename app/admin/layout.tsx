@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: '/admin/houses', label: 'Houses' },
   { href: '/admin/tenancies', label: 'Tenancies' },
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/notifications', label: 'Notifications' },
 ];
 
 export default function AdminLayout({
